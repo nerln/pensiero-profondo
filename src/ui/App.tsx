@@ -20,7 +20,10 @@ const NAV_ITEMS: Array<{ id: View; label: string }> = [
 
 export function App(): JSX.Element {
   const [state, dispatch] = useReducer(reduce, initialState);
-  const [view, setView] = useState<View>('crew');
+  const [view, setView] = useState<View>(() => {
+    const v = new URLSearchParams(window.location.search).get('view');
+    return v === 'board' || v === 'rituals' || v === 'machines' ? v : 'crew';
+  });
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const wsRef = useRef<ReturnType<typeof connectWs> | null>(null);
 

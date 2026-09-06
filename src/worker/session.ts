@@ -115,7 +115,8 @@ export function startSession(spec: SessionStartSpec, handlers: SessionHandlers, 
         {
           verb: z.enum(VERBS).describe('The verb for this entry; see the tool description for what each means.'),
           text: z.string().describe('The entry text.'),
-          to: z.string().default('all').describe("Addressee: a member id, a role name, or 'all'."),
+          // Optional, not .default(): a default does not make the field optional in the MCP schema, and a call without it is rejected.
+          to: z.string().optional().describe("Addressee: a member id, a role name, or 'all' (the default)."),
           replyTo: z.string().optional().describe('Id of the entry this one answers, e.g. an attacco pointing at a numero.'),
           // A JSON object as a string: the SDK cannot turn a zod record into a tool schema, and a string always can.
           meta: z.string().optional().describe('Optional JSON object as a string, e.g. {"value": 42.8, "unit": "%", "source": "file:line"} for numero, {"verdict": "refuted"} for attacco.'),
@@ -134,7 +135,7 @@ export function startSession(spec: SessionStartSpec, handlers: SessionHandlers, 
           const result = await handlers.lavagnaScrivi({
             verb: args.verb,
             text: args.text,
-            to: args.to,
+            to: args.to ?? 'all',
             replyTo: args.replyTo ?? null,
             meta,
           });
