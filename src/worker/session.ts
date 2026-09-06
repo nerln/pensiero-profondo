@@ -225,9 +225,11 @@ export function startSession(spec: SessionStartSpec, handlers: SessionHandlers, 
       for await (const message of q) {
         const ts = new Date().toISOString();
         if (message.type === 'system' && message.subtype === 'init') {
+          // The SDK repeats init at every turn in streaming-input mode; the transcript line goes once.
+          const first = sessionId === null;
           sessionId = message.session_id;
-          handlers.onItem({ kind: 'system', text: `session started: model ${message.model}, claude code ${message.claude_code_version}, mcp ${message.mcp_servers.map((m) => `${m.name}=${m.status}`).join(' ') || 'none'}, tools ${message.tools.length} (${message.tools.filter((t) => t.startsWith('mcp__')).join(' ') || 'no mcp tools'})`, ts });
-          handlers.onStatus('idle', { sessionId });
+          if (first) handlers.onItem({ kind: 'system', text: `session started: model ${message.model}, claude code ${message.claude_code_version}, mcp ${message.mcp_servers.map((m) => `${m.name}=${m.status}`).join(' ') || 'none'}, tools ${message.tools.length} (${message.tools.filter((t) => t.startsWith('mcp__')).join(' ') || 'no mcp tools'})`, ts });
+          if (first) handlers.onStatus('idle', { sessionId });
         } else if (message.type === 'assistant') {
           handlers.onStatus('working');
           for (const block of message.message.content) {

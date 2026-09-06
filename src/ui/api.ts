@@ -95,6 +95,11 @@ export const api = {
     if (isMockMode()) return mockHub.patchStudio(input);
     return request<Studio>('/api/studio', { method: 'PATCH', body: JSON.stringify(input) });
   },
+
+  async resolvePermission(memberId: string, reqId: string, input: { allow: boolean; remember: boolean }): Promise<void> {
+    if (isMockMode()) return mockHub.resolvePermission(memberId, reqId, input.allow, input.remember);
+    await request(`/api/members/${memberId}/permissions/${reqId}`, { method: 'POST', body: JSON.stringify(input) });
+  },
 };
 
 export type { EffortLevel };

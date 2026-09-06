@@ -27,4 +27,17 @@ for (let i = 0; i < 20; i++) {
   if (t.length) for (const it of t.slice(-6)) console.log('   ', it.kind, JSON.stringify(it).slice(0, 220));
   if (s.voci.length || m.status === 'error' || (m.status === 'idle' && m.usage.turns > 0)) break;
 }
+// second phase: a Bash command that should ask the owner
+await api('POST', `/api/members/${member.id}/send`, { text: 'Run exactly this shell command with the Bash tool and nothing else: python3 -c "print(6*7)". Then reply with the single word done.' });
+for (let i = 0; i < 18; i++) {
+  await sleep(5000);
+  const s = await api('GET', '/api/snapshot');
+  const m = s.members.find((x) => x.id === member.id);
+  const t = await api('GET', `/api/members/${member.id}/transcript`);
+  console.log(`bash t+${(i + 1) * 5}s status=${m.status} items=${t.length} permissions=${JSON.stringify(s.permissions)}`);
+  for (const it of t.slice(-3)) console.log('   ', it.kind, JSON.stringify(it).slice(0, 200));
+  if (s.permissions.length) { await api('POST', `/api/members/${member.id}/permissions/${s.permissions[0].reqId}`, { allow: true }); console.log('   -> allowed'); }
+  if (t.some((it) => it.kind === 'tool_result' && /^42\s*$/m.test(it.text))) { console.log('COMMAND RAN'); break; }
+  if (m.status === 'idle' && i > 3 && !t.some((it) => it.kind === 'tool_use' && it.name === 'Bash')) { console.log('IDLE WITHOUT BASH'); break; }
+}
 hub.kill('SIGTERM'); rmSync(dir, { recursive: true, force: true });

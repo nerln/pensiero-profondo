@@ -66,13 +66,13 @@ try {
   log('delivery framed ok');
 
   // a tool call the SDK would ask about goes to the owner: Bash is not pre-approved for a deckhand
-  await api('POST', `/api/members/${member.id}/send`, { text: 'Run exactly this shell command with the Bash tool and nothing else: echo pensiero-ok. Then reply with the single word done.' });
+  await api('POST', `/api/members/${member.id}/send`, { text: 'Run exactly this shell command with the Bash tool and nothing else: python3 -c "print(6*7)". Then reply with the single word done.' });
   const perm = await until('a permission request for Bash', async () => { const s = await api('GET', '/api/snapshot'); return s.permissions.find((p) => p.memberId === member.id && p.toolName === 'Bash') ?? null; }, 90000);
   log('permission requested:', perm.toolName, JSON.stringify(perm.summary));
   const waiting = await api('GET', '/api/snapshot');
   if (waiting.members.find((x) => x.id === member.id).status !== 'waiting') fail('member is not in waiting status during a permission request');
   await api('POST', `/api/members/${member.id}/permissions/${perm.reqId}`, { allow: true });
-  const ran = await until('the Bash result in the transcript', async () => { const t = await api('GET', `/api/members/${member.id}/transcript`); return t.find((i) => i.kind === 'tool_result' && /pensiero-ok/.test(i.text)) ?? null; }, 90000);
+  const ran = await until('the Bash result in the transcript', async () => { const t = await api('GET', `/api/members/${member.id}/transcript`); return t.find((i) => i.kind === 'tool_result' && /^42\s*$/m.test(i.text)) ?? null; }, 90000);
   log('permission allowed, command ran:', JSON.stringify(ran.text.trim()).slice(0, 60));
   if ((await api('GET', '/api/snapshot')).permissions.length !== 0) fail('permission still pending after the decision');
 

@@ -118,7 +118,9 @@ export function startHub(opts: HubOptions): Promise<Hub> {
     ].join('\n');
   }
 
-  function startMember(input: { roleId: string; machineId: string; name?: string; cwd?: string; model?: string; effort?: Role['effort']; brief: string; resume?: string | null }): Member {
+  const PERMISSION_MODES: ReadonlySet<string> = new Set(['default', 'acceptEdits', 'bypassPermissions', 'plan', 'dontAsk']);
+
+  function startMember(input: { roleId: string; machineId: string; name?: string; cwd?: string; model?: string; effort?: Role['effort']; brief: string; resume?: string | null; permissionMode?: string }): Member {
     const studio = db.studio.get();
     if (!studio) throw new HttpError(400, 'no studio');
     const role = db.roles.get(input.roleId);
@@ -145,7 +147,8 @@ export function startHub(opts: HubOptions): Promise<Hub> {
       cwd: member.cwd,
       model: member.model,
       effort: member.effort,
-      permissionMode: role.permissionMode,
+      // The owner may pick the permission mode at sign-on, as in the terminal; the role's mode is the default.
+      permissionMode: input.permissionMode && PERMISSION_MODES.has(input.permissionMode) ? (input.permissionMode as Role['permissionMode']) : role.permissionMode,
       firstPrompt: firstPrompt(studio, role, member, input.brief ?? ''),
       resume: input.resume ?? null,
     };
@@ -303,7 +306,7 @@ export function startHub(opts: HubOptions): Promise<Hub> {
       return startMember({
         roleId: String(body.roleId ?? ''), machineId: String(body.machineId ?? ''),
         name: str(body.name), cwd: str(body.cwd), model: str(body.model),
-        effort: str(body.effort) as Role['effort'] | undefined, brief: str(body.brief) ?? '', resume: str(body.resume) ?? null,
+        effort: str(body.effort) as Role['effort'] | undefined, brief: str(body.brief) ?? '', resume: str(body.resume) ?? null, permissionMode: str(body.permissionMode),
       });
     }
     if ((x = m(/^\/api\/members\/([^/]+)\/transcript$/)) && method === 'GET') return db.transcripts.list(x[1]);

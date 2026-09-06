@@ -73,3 +73,50 @@ export function resolveAddressee(to: string, members: Array<{ id: string; name: 
   if (to === 'all' || roleNames.includes(to)) return to;
   return memberNameOrId(to, members);
 }
+
+/** JSON.stringify that never throws (circular input, BigInt, ...) and always returns text. */
+export function safeStringify(value: unknown, space?: number): string {
+  try {
+    return JSON.stringify(value, null, space) ?? String(value);
+  } catch {
+    return String(value);
+  }
+}
+
+/** First `max` characters of the input as JSON, with an ellipsis when it was cut. Used as the
+ *  fallback tool-call summary for tools we have no dedicated rendering for. */
+export function truncateJson(input: unknown, max = 120): string {
+  const s = safeStringify(input);
+  return s.length > max ? `${s.slice(0, max)}…` : s;
+}
+
+/** One line the UI can show for a tool call, the same way Claude Code summarizes it in the
+ *  terminal: the command for Bash, the path for a file tool, the pattern for a search, and so
+ *  on. Falls back to the first 120 characters of the input as JSON. */
+export function deriveToolSummary(name: string, input: unknown): string {
+  const obj: Record<string, unknown> = input && typeof input === 'object' && !Array.isArray(input) ? (input as Record<string, unknown>) : {};
+  const str = (key: string): string | undefined => (typeof obj[key] === 'string' ? (obj[key] as string) : undefined);
+  switch (name) {
+    case 'Bash':
+      return str('command') ?? truncateJson(input);
+    case 'Read':
+    case 'Write':
+    case 'Edit':
+      return str('file_path') ?? truncateJson(input);
+    case 'Grep':
+    case 'Glob':
+      return str('pattern') ?? truncateJson(input);
+    case 'WebFetch':
+      return str('url') ?? truncateJson(input);
+    case 'mcp__pensiero__lavagna_scrivi':
+      return `board: ${str('verb') ?? '?'} → ${str('to') ?? '?'}`;
+    default:
+      return truncateJson(input);
+  }
+}
+
+/** The first line of a possibly multi-line string, for a collapsed preview. */
+export function firstLine(text: string): string {
+  const idx = text.indexOf('\n');
+  return idx === -1 ? text : text.slice(0, idx);
+}
