@@ -34,12 +34,14 @@ export function CrewView({ state, onOpenMember }: { state: AppState; onOpenMembe
             {state.members.map((m) => {
               const role = state.roles.find((r) => r.id === m.roleId);
               const machine = state.machines.find((x) => x.id === m.machineId);
+              const needsDecision = state.permissions.some((p) => p.memberId === m.id);
               return (
                 <button key={m.id} type="button" className="card member-card" onClick={() => onOpenMember(m.id)}>
                   <div className="member-card-head">
                     <span className="member-card-name">{m.name}</span>
                     <StatusPill status={m.status} />
                   </div>
+                  {needsDecision && <div className="needs-decision-badge">needs a decision</div>}
                   <div className="member-card-meta">
                     {role?.label ?? m.roleId} · {machine?.name ?? m.machineId}
                   </div>

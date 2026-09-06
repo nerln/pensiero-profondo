@@ -740,6 +740,7 @@ p {
 .t-user.framed {
   border: 1px dashed var(--border-strong);
   background: var(--bg-elevated);
+  padding: 8px 12px;
   position: relative;
 }
 
@@ -752,9 +753,21 @@ p {
   margin-bottom: 4px;
 }
 
+.t-framed-body {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text-dim);
+}
+
 .t-text {
   padding: 2px 2px;
-  white-space: pre-wrap;
+}
+
+.t-text-live {
+  position: relative;
 }
 
 .t-thinking {
@@ -768,55 +781,164 @@ p {
   color: var(--text-faint);
 }
 
+.t-thinking-body {
+  white-space: pre-wrap;
+}
+
+.t-thinking-live {
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 6px 10px;
+}
+
+.t-thinking-live-label {
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  color: var(--text-faint);
+  font-style: normal;
+  margin-bottom: 3px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* tool call: a compact head row, an optional expanded input block, and its attached result */
+
+.tool-name-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--accent-bg);
+  color: var(--accent-strong);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
 .t-tool {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--bg-elevated);
 }
 
-.t-tool summary {
+.t-tool-head {
   cursor: pointer;
+  width: 100%;
   padding: 5px 10px;
   display: flex;
   gap: 8px;
   align-items: center;
-  list-style: none;
+  background: none;
+  border: none;
+  text-align: left;
+  color: inherit;
+  font: inherit;
 }
 
-.t-tool summary::-webkit-details-marker {
-  display: none;
-}
-
-.t-tool-name {
+.t-tool-summary-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-family: var(--font-mono);
-  font-weight: 600;
-  color: var(--accent-strong);
+  font-size: 11.5px;
+  color: var(--text-dim);
 }
 
-.t-tool pre {
+.t-tool-chevron {
+  color: var(--text-faint);
+  flex-shrink: 0;
+  font-size: 10px;
+}
+
+.t-tool-input-pre,
+.t-tool-result-pre {
   margin: 0;
   padding: 8px 10px;
   border-top: 1px solid var(--border);
-  overflow-x: auto;
+  overflow: auto;
   font-family: var(--font-mono);
   font-size: 11.5px;
   white-space: pre-wrap;
   word-break: break-word;
 }
 
-.t-result {
+.t-tool-result-pre {
+  max-height: 320px;
+}
+
+.t-tool-result {
+  border-top: 1px solid var(--border);
+}
+
+.t-tool-result.t-item {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--bg-elevated);
 }
 
-.t-result.is-error {
+.t-tool-result.is-error {
   border-color: var(--danger);
   background: var(--danger-bg);
 }
 
-.t-result.is-error .t-tool-name {
+.t-tool-result-head {
+  cursor: pointer;
+  width: 100%;
+  padding: 5px 10px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  background: none;
+  border: none;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+}
+
+.t-error-label {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: 4px;
+  font-family: var(--font);
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  background: var(--danger-bg);
   color: var(--danger);
+  border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent);
+  flex-shrink: 0;
+}
+
+.t-tool-result-firstline {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-dim);
+}
+
+.t-tool-result.is-error .t-tool-result-firstline {
+  color: var(--danger);
+}
+
+.t-tool-result-expand {
+  color: var(--text-faint);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  flex-shrink: 0;
 }
 
 .t-final {
@@ -1121,4 +1243,319 @@ p {
   color: var(--text-faint);
   font-size: 12px;
   margin-left: auto;
+}
+
+/* ---------- rail badge: pending permission decisions across members ---------- */
+
+.rail-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 5px;
+  margin-left: 6px;
+  border-radius: 999px;
+  background: var(--warning);
+  color: var(--bg-elevated);
+  font-size: 10px;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
+/* ---------- needs-a-decision badge on a member card ---------- */
+
+.needs-decision-badge {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  margin-bottom: 4px;
+  border-radius: 4px;
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  background: var(--warning-bg);
+  color: var(--warning);
+  border: 1px solid color-mix(in srgb, var(--warning) 40%, transparent);
+}
+
+/* ---------- streaming cursor ---------- */
+
+.stream-cursor {
+  display: inline-block;
+  width: 0.5em;
+  height: 1em;
+  margin-left: 1px;
+  vertical-align: text-bottom;
+  background: var(--accent);
+  animation: stream-blink 1s step-end infinite;
+}
+
+@keyframes stream-blink {
+  0%, 49% {
+    opacity: 1;
+  }
+  50%, 100% {
+    opacity: 0;
+  }
+}
+
+/* ---------- markdown ---------- */
+
+.markdown {
+  font-size: 12.5px;
+  line-height: 1.55;
+  overflow-x: auto;
+}
+
+.markdown > *:first-child {
+  margin-top: 0;
+}
+
+.markdown > *:last-child {
+  margin-bottom: 0;
+}
+
+.markdown p {
+  margin: 0 0 0.6em;
+}
+
+.markdown h1,
+.markdown h2,
+.markdown h3,
+.markdown h4 {
+  margin: 0.9em 0 0.4em;
+  line-height: 1.3;
+}
+
+.markdown h1 {
+  font-size: 1.25em;
+}
+
+.markdown h2 {
+  font-size: 1.15em;
+}
+
+.markdown h3 {
+  font-size: 1.05em;
+}
+
+.markdown ul,
+.markdown ol {
+  margin: 0 0 0.6em;
+  padding-left: 1.4em;
+}
+
+.markdown li {
+  margin: 0.15em 0;
+}
+
+.markdown blockquote {
+  margin: 0 0 0.6em;
+  padding: 2px 10px;
+  border-left: 3px solid var(--border-strong);
+  color: var(--text-dim);
+}
+
+.markdown hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 0.8em 0;
+}
+
+.markdown a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+.markdown code {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+}
+
+.markdown pre {
+  margin: 0;
+  padding: 10px 12px;
+  overflow-x: auto;
+  font-size: 11.5px;
+}
+
+.markdown pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 1em;
+  white-space: pre;
+}
+
+.md-code-block {
+  position: relative;
+  margin: 0.4em 0 0.8em;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-inset);
+}
+
+.md-copy-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border-strong);
+  background: var(--bg-elevated);
+  color: var(--text-dim);
+  font-size: 10.5px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.1s ease;
+}
+
+.md-code-block:hover .md-copy-btn,
+.md-copy-btn:focus-visible {
+  opacity: 1;
+}
+
+.md-table-wrap {
+  overflow-x: auto;
+  margin: 0.4em 0 0.8em;
+}
+
+.markdown table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.95em;
+}
+
+.markdown th,
+.markdown td {
+  border: 1px solid var(--border);
+  padding: 4px 9px;
+  text-align: left;
+}
+
+.markdown thead th {
+  background: var(--bg-inset);
+  font-weight: 600;
+}
+
+/* ---------- permission panel ---------- */
+
+.permission-panel {
+  margin-top: 14px;
+  max-width: 880px;
+  border: 1px solid var(--warning);
+  border-left-width: 3px;
+  border-radius: var(--radius);
+  background: var(--warning-bg);
+  padding: 12px 14px;
+  outline: none;
+}
+
+.permission-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.permission-panel-title {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.permission-panel-summary {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  padding: 6px 8px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  margin-bottom: 8px;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.permission-panel-input {
+  margin-bottom: 10px;
+  font-size: 12px;
+}
+
+.permission-panel-input summary {
+  cursor: pointer;
+  color: var(--text-dim);
+}
+
+.permission-panel-input pre {
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: auto;
+  max-height: 240px;
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.permission-panel-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.permission-panel-actions kbd {
+  margin-left: 5px;
+  padding: 0 5px;
+  border-radius: 3px;
+  border: 1px solid color-mix(in srgb, currentColor 40%, transparent);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  opacity: 0.75;
+}
+
+/* ---------- member status line: working / waiting for a decision ---------- */
+
+.member-status-line {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--text-dim);
+  max-width: 880px;
+}
+
+.status-line-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.member-status-line.status-working .status-line-dot {
+  background: #1f8a5f;
+  animation: stream-blink 1.4s step-end infinite;
+}
+
+.member-status-line.status-working {
+  color: #1f8a5f;
+}
+
+.member-status-line.status-waiting .status-line-dot {
+  background: var(--warning);
+}
+
+.member-status-line.status-waiting {
+  color: var(--warning);
 }

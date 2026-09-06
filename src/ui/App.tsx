@@ -25,6 +25,9 @@ export function App(): JSX.Element {
     return v === 'board' || v === 'rituals' || v === 'machines' ? v : 'crew';
   });
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+  // Kept here, not inside MemberView, so a draft survives switching to another view and back —
+  // the Member view unmounts on "back to crew", a local useState there would not.
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
   const wsRef = useRef<ReturnType<typeof connectWs> | null>(null);
 
   useEffect(() => {
@@ -48,6 +51,7 @@ export function App(): JSX.Element {
   }
 
   const showingMember = selectedMemberId !== null;
+  const pendingDecisions = state.permissions.length;
 
   return (
     <div className="app">
@@ -67,6 +71,11 @@ export function App(): JSX.Element {
             }}
           >
             {item.label}
+            {item.id === 'crew' && pendingDecisions > 0 && (
+              <span className="rail-badge" title={`${pendingDecisions} pending decision${pendingDecisions === 1 ? '' : 's'}`}>
+                {pendingDecisions}
+              </span>
+            )}
           </button>
         ))}
         <div className="rail-spacer" />
@@ -76,7 +85,14 @@ export function App(): JSX.Element {
         <div className="view">
           {state.lastError && <div className="error-banner">{state.lastError}</div>}
           {showingMember && selectedMemberId ? (
-            <MemberView state={state} dispatch={dispatch} memberId={selectedMemberId} onBack={backToCrew} />
+            <MemberView
+              state={state}
+              dispatch={dispatch}
+              memberId={selectedMemberId}
+              onBack={backToCrew}
+              draft={drafts[selectedMemberId] ?? ''}
+              onDraftChange={(text) => setDrafts((prev) => ({ ...prev, [selectedMemberId]: text }))}
+            />
           ) : view === 'crew' ? (
             <CrewView state={state} onOpenMember={openMember} />
           ) : view === 'board' ? (

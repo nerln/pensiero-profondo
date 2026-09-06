@@ -9,6 +9,7 @@ import type {
   Author,
   Machine,
   Member,
+  PermissionRequest,
   Ritual,
   Role,
   Studio,
@@ -17,7 +18,7 @@ import type {
   Voce,
 } from '../core/types.js';
 import type { UiAction } from './state.js';
-import { nextId } from './utils.js';
+import { deriveToolSummary, nextId } from './utils.js';
 
 export function isMockMode(): boolean {
   if (typeof window === 'undefined') return false;
@@ -65,6 +66,49 @@ function minutesAgo(m: number): string {
 
 const STUDIO_ID = 'studio-1';
 
+/** toolUseId shared between Lookout 2's pending `tool_use` and the `tool_result` that lands
+ *  once the owner answers the permission request — keeps the two rows grouped in the UI. */
+const LOOKOUT2_PUSH_TOOL_USE_ID = 'tu-lookout2-push';
+const LOOKOUT2_PUSH_COMMAND = 'git push origin decoder-patch --force-with-lease';
+
+function buildLookout2Permission(memberId: string): PermissionRequest {
+  const input = { command: LOOKOUT2_PUSH_COMMAND };
+  return {
+    reqId: 'perm-lookout2-1',
+    memberId,
+    toolName: 'Bash',
+    input,
+    summary: deriveToolSummary('Bash', input),
+    createdAt: minutesAgo(1),
+  };
+}
+
+/** Streamed as growing `transcript.delta` chunks, then finalized verbatim: exercises markdown
+ *  (heading, list, code block, table, link) rendering both live and finalized. */
+const STREAMING_MARKDOWN_DEMO = `## Cold-cache verdict
+
+The patched decoder is **not** a throughput regression. Cold-cache numbers hold within noise of \`main\`:
+
+- Patched: **94.2 req/s**
+- Main: **92.7 req/s**
+- Delta: +1.6% — inside the 5% gate
+
+\`\`\`bash
+$ python3 bench/run.py --cold --trials 5
+patched: 94.2 req/s (mean of 5)
+main:    92.7 req/s (mean of 5)
+\`\`\`
+
+| run | patched (req/s) | main (req/s) |
+| --- | ---: | ---: |
+| 1 | 94.0 | 92.5 |
+| 2 | 93.9 | 92.9 |
+| 3 | 94.4 | 92.6 |
+| 4 | 94.1 | 92.8 |
+| 5 | 94.0 | 92.7 |
+
+Full output in \`bench/out/cold.json\`. Gate closed — [posting the corrected number to the board](https://github.com/nerln/reflip/issues/128).`;
+
 function zeroUsage(): Usage {
   return { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0, costUsd: 0, turns: 0 };
 }
@@ -77,6 +121,7 @@ function memberAuthor(m: Member, role: Role, machines: Machine[]): Author {
 class MockHub {
   private dispatch: ((action: UiAction) => void) | null = null;
   private tickTimer: number | undefined;
+  private demoTimers: number[] = [];
   private tick = 0;
 
   private studio: Studio;
@@ -86,6 +131,7 @@ class MockHub {
   private voci: Voce[];
   private rituals: Ritual[];
   private transcripts: Record<string, TranscriptItem[]>;
+  private permissions: PermissionRequest[];
 
   constructor() {
     this.roles = buildRoles();
@@ -95,6 +141,8 @@ class MockHub {
     this.voci = voci;
     this.rituals = rituals;
     this.transcripts = buildTranscripts(this.members);
+    const lookout2 = this.members.find((m) => m.name === 'Lookout 2');
+    this.permissions = lookout2 ? [buildLookout2Permission(lookout2.id)] : [];
     this.studio = {
       id: STUDIO_ID,
       name: 'reflip-throughput',
@@ -152,9 +200,11 @@ class MockHub {
         members: this.members,
         voci: this.voci,
         rituals: this.rituals,
-        permissions: [],
+        permissions: this.permissions,
       });
     }, 120);
+    const streamTimer = window.setTimeout(() => this.runStreamingDemo(), 900);
+    this.demoTimers.push(streamTimer);
     this.tickTimer = window.setInterval(() => this.simulateTick(), 3000);
     return {
       send: () => {
@@ -163,6 +213,8 @@ class MockHub {
       close: () => {
         window.clearTimeout(openTimer);
         if (this.tickTimer !== undefined) window.clearInterval(this.tickTimer);
+        for (const t of this.demoTimers) window.clearInterval(t);
+        this.demoTimers = [];
         this.dispatch = null;
       },
     };
@@ -346,6 +398,80 @@ class MockHub {
     return this.studio;
   }
 
+  /** Mirrors POST /api/members/:id/permissions/:reqId: drop the request, tell the UI, and let
+   *  the member act on the answer — resolved entirely client-side, same as the rest of the mock. */
+  async resolvePermission(memberId: string, reqId: string, allow: boolean, remember: boolean): Promise<void> {
+    const existed = this.permissions.some((p) => p.reqId === reqId);
+    this.permissions = this.permissions.filter((p) => p.reqId !== reqId);
+    if (existed) this.emit({ t: 'permission.resolved', memberId, reqId, allow, by: 'owner' });
+
+    const ts = new Date().toISOString();
+    if (!allow) {
+      this.appendTranscript(memberId, { kind: 'tool_result', toolUseId: LOOKOUT2_PUSH_TOOL_USE_ID, text: 'Permission denied by the owner.', isError: true, ts });
+      this.updateMember(memberId, { status: 'idle', lastActivityAt: ts });
+      return;
+    }
+    this.updateMember(memberId, { status: 'working', lastActivityAt: ts });
+    window.setTimeout(() => {
+      const doneTs = new Date().toISOString();
+      this.appendTranscript(memberId, {
+        kind: 'tool_result',
+        toolUseId: LOOKOUT2_PUSH_TOOL_USE_ID,
+        text: 'To github.com:nerln/reflip.git\n   a1b2c3d..e4f5a6b  decoder-patch -> decoder-patch',
+        isError: false,
+        ts: doneTs,
+      });
+      this.appendTranscript(memberId, {
+        kind: 'text',
+        text: remember
+          ? 'Pushed. Bash is pre-approved for the rest of this session, so the next command will not ask again.'
+          : 'Pushed the corrected benchmark to the remote.',
+        ts: doneTs,
+      });
+      this.updateMember(memberId, { status: 'idle', lastActivityAt: doneTs });
+    }, 800);
+  }
+
+  /** Plays out one streamed markdown answer on the Captain: growing `transcript.delta` chunks
+   *  followed by the finalized `text` item, exactly the shape a real session sends. */
+  private runStreamingDemo(): void {
+    const member = this.members.find((m) => m.name === 'Captain');
+    if (!member) return;
+    const askTs = new Date().toISOString();
+    this.updateMember(member.id, { status: 'working', lastActivityAt: askTs });
+    this.appendTranscript(member.id, {
+      kind: 'user',
+      text: 'Give me the verdict on the cold-cache rerun: the numbers, the command, and whether the gate holds.',
+      ts: askTs,
+      framed: false,
+    });
+
+    const text = STREAMING_MARKDOWN_DEMO;
+    const chunkSize = 16;
+    let i = 0;
+    const timer = window.setInterval(() => {
+      const delta = text.slice(i, i + chunkSize);
+      i += chunkSize;
+      this.emit({ t: 'transcript.delta', memberId: member.id, blockIndex: 0, kind: 'text', delta });
+      if (i >= text.length) {
+        window.clearInterval(timer);
+        const ts = new Date().toISOString();
+        this.appendTranscript(member.id, { kind: 'text', text, ts });
+        const usage: Usage = {
+          ...member.usage,
+          inputTokens: member.usage.inputTokens + 1400,
+          outputTokens: member.usage.outputTokens + 260,
+          cacheReadTokens: member.usage.cacheReadTokens + 4000,
+          costUsd: Number((member.usage.costUsd + 0.06).toFixed(4)),
+          turns: member.usage.turns + 1,
+        };
+        this.appendTranscript(member.id, { kind: 'result', subtype: 'success', usage, ts });
+        this.updateMember(member.id, { status: 'idle', usage, lastActivityAt: ts });
+      }
+    }, 80);
+    this.demoTimers.push(timer);
+  }
+
   // ---------- background simulation ----------
 
   private simulateTick(): void {
@@ -510,6 +636,22 @@ function buildMembers(roles: Role[], machines: Machine[]): Member[] {
       sessionId: 'sess-deckhand-1',
       usage: { inputTokens: 21000, outputTokens: 5400, cacheReadTokens: 60000, cacheWriteTokens: 8000, costUsd: 1.42, turns: 9 },
       createdAt: minutesAgo(132),
+      lastActivityAt: minutesAgo(1),
+      error: null,
+    },
+    {
+      id: 'member-lookout-2',
+      studioId: STUDIO_ID,
+      roleId: roles[1].id,
+      machineId: laptop,
+      name: 'Lookout 2',
+      cwd: '/Users/eugenionerelli/dev/reflip',
+      model: roles[1].model,
+      effort: roles[1].effort,
+      status: 'waiting',
+      sessionId: 'sess-lookout-2',
+      usage: { inputTokens: 14000, outputTokens: 1100, cacheReadTokens: 22000, cacheWriteTokens: 0, costUsd: 0.44, turns: 3 },
+      createdAt: minutesAgo(30),
       lastActivityAt: minutesAgo(1),
       error: null,
     },
@@ -798,7 +940,49 @@ function buildTranscripts(members: Member[]): Record<string, TranscriptItem[]> {
     { kind: 'tool_use', name: 'Bash', input: { command: 'python3 bench/run.py --cold --trials 5' }, toolUseId: 'tu-dh-3', ts: minutesAgo(41) },
     { kind: 'tool_result', toolUseId: 'tu-dh-3', text: 'patched: 94.2 req/s (mean of 5)\nmain:    92.7 req/s (mean of 5)', isError: false, ts: minutesAgo(40) },
     { kind: 'text', text: 'Cold cache: 94.2 vs 92.7 req/s. Not a regression. Posting the corrected number.', ts: minutesAgo(40) },
+    {
+      kind: 'tool_use',
+      name: 'Bash',
+      input: { command: 'hyperfine --warmup 3 --min-runs 50 -L bin patched,main "./decoder --{bin} --input corpus/large"' },
+      toolUseId: 'tu-dh-4',
+      ts: minutesAgo(3),
+    },
+    {
+      kind: 'tool_result',
+      toolUseId: 'tu-dh-4',
+      text:
+        "Benchmark 1: ./decoder --patched --input corpus/large\n" +
+        '  Time (mean ± σ):     41.2 ms ±   1.8 ms    [User: 38.1 ms, System: 2.6 ms]\n' +
+        '  Range (min … max):   38.9 ms …  46.7 ms    50 runs\n' +
+        '\n' +
+        "Benchmark 2: ./decoder --main --input corpus/large\n" +
+        '  Time (mean ± σ):     42.0 ms ±   2.1 ms    [User: 38.9 ms, System: 2.7 ms]\n' +
+        '  Range (min … max):   39.4 ms …  48.3 ms    50 runs\n' +
+        '\n' +
+        'Summary\n' +
+        "  './decoder --patched --input corpus/large' ran\n" +
+        "    1.02 ± 0.06 times faster than './decoder --main --input corpus/large'\n" +
+        '\n' +
+        'Throughput, patched: 128.7 req/s\n' +
+        'Throughput, main:    126.1 req/s\n' +
+        'Warm-cache figures only — the cold-cache rerun above is the number that matters for the gate.',
+      isError: false,
+      ts: minutesAgo(2),
+    },
+    { kind: 'text', text: 'Large-corpus warm-cache run confirms the same story: within noise, no regression.', ts: minutesAgo(2) },
     { kind: 'result', subtype: 'success', usage: { inputTokens: 21000, outputTokens: 5400, cacheReadTokens: 60000, cacheWriteTokens: 8000, costUsd: 1.42, turns: 9 }, ts: minutesAgo(1) },
+  ];
+
+  t[members[3].id] = [
+    { kind: 'system', text: `Session started. Model: ${members[3].model}, effort: ${members[3].effort}.`, ts: minutesAgo(30) },
+    {
+      kind: 'user',
+      text: 'Once the cold-cache rerun confirms the number, push the decoder-patch branch so the corrected benchmark is on the remote.',
+      ts: minutesAgo(30),
+      framed: false,
+    },
+    { kind: 'thinking', text: 'The cold-cache number holds and the gate is closed. Pushing is an outward action — that needs the owner directly, not a proposta on the board.', ts: minutesAgo(2) },
+    { kind: 'tool_use', name: 'Bash', input: { command: LOOKOUT2_PUSH_COMMAND }, toolUseId: LOOKOUT2_PUSH_TOOL_USE_ID, ts: minutesAgo(1) },
   ];
 
   return t;
