@@ -98,7 +98,8 @@ describe('hub', () => {
     expect((await api('POST', `/api/members/${memberId}/permissions/p1`, { allow: true })).status).toBe(404);
 
     // a worker cannot speak for a member of another machine
-    const other = db.members.create({ studioId: db.studio.get()!.id, roleId: 'deckhand', machineId: 'elsewhere', name: 'X', cwd: '/tmp', model: 'm', effort: 'high' });
+    const elsewhere = db.machines.upsert({ name: 'elsewhere', kind: 'remote', status: 'offline', claudeVersion: null });
+    const other = db.members.create({ studioId: db.studio.get()!.id, roleId: 'deckhand', machineId: elsewhere.id, name: 'X', cwd: '/tmp', model: 'm', effort: 'high' });
     worker.send(JSON.stringify({ t: 'session.item', memberId: other.id, item: { kind: 'text', text: 'forged', ts: 'x' } } satisfies WorkerToHub));
     await new Promise((r) => setTimeout(r, 200));
     expect(db.transcripts.list(other.id)).toHaveLength(0);
