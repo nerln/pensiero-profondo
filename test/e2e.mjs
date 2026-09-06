@@ -8,7 +8,7 @@ import { join } from 'node:path';
 const ROOT = new URL('..', import.meta.url).pathname.replace(/\/$/, '');
 const CLI = join(ROOT, 'dist', 'cli.js');
 const PORT = 4190 + Math.floor(Math.random() * 100);
-const dir = mkdtempSync(join(tmpdir(), 'ciurma-e2e-'));
+const dir = mkdtempSync(join(tmpdir(), 'pensiero-e2e-'));
 const log = (...a) => console.log('[e2e]', ...a);
 const fail = (m) => { console.error('[e2e] FAIL:', m); cleanup(); process.exit(1); };
 let hub;
@@ -16,7 +16,7 @@ function cleanup() { try { hub?.kill('SIGTERM'); } catch {} try { rmSync(dir, { 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let TOKEN = '';
 const api = async (method, path, body) => {
-  const r = await fetch(`http://127.0.0.1:${PORT}${path}`, { method, headers: { 'content-type': 'application/json', 'x-ciurma-token': TOKEN }, body: body ? JSON.stringify(body) : undefined });
+  const r = await fetch(`http://127.0.0.1:${PORT}${path}`, { method, headers: { 'content-type': 'application/json', 'x-pensiero-token': TOKEN }, body: body ? JSON.stringify(body) : undefined });
   const j = await r.json();
   if (!r.ok) throw new Error(`${method} ${path} -> ${r.status} ${JSON.stringify(j)}`);
   return j;
@@ -30,7 +30,7 @@ async function until(desc, fn, timeoutMs = 90000) {
 try {
   const init = spawn('node', [CLI, 'init', dir, '--port', String(PORT)], { stdio: 'pipe' });
   await new Promise((r) => init.on('exit', r));
-  const cfg = JSON.parse(readFileSync(join(dir, '.ciurma', 'config.json'), 'utf8'));
+  const cfg = JSON.parse(readFileSync(join(dir, '.pensiero', 'config.json'), 'utf8'));
   if (!cfg.token) fail('init produced no token');
   TOKEN = cfg.token;
   log('init ok, port', PORT);
@@ -44,7 +44,7 @@ try {
   const machine = snap.machines.find((m) => m.status === 'online');
   log('worker online:', machine.name, machine.claudeVersion);
 
-  const member = await api('POST', '/api/members', { roleId: 'deckhand', machineId: machine.id, name: 'E2E Deckhand', model: process.env.CIURMA_MODEL || 'claude-sonnet-5', effort: 'low', cwd: dir, brief: 'Write exactly one entry on the board with lavagna_scrivi: verb "fatto", text "e2e ready", to "all". Then reply with the single word done and stop. Do not do anything else.' });
+  const member = await api('POST', '/api/members', { roleId: 'deckhand', machineId: machine.id, name: 'E2E Deckhand', model: process.env.PENSIERO_MODEL || 'claude-sonnet-5', effort: 'low', cwd: dir, brief: 'Write exactly one entry on the board with lavagna_scrivi: verb "fatto", text "e2e ready", to "all". Then reply with the single word done and stop. Do not do anything else.' });
   log('member started:', member.id);
 
   const voce = await until('the member writes fatto on the board', async () => { const s = await api('GET', '/api/snapshot'); return s.voci.find((v) => v.verb === 'fatto' && v.author.kind === 'member' && v.author.memberId === member.id) ?? null; }, 120000);

@@ -1,4 +1,4 @@
-# ciurma
+# Pensiero Profondo
 
 Run a crew of Claude Code agents as a research lab: roles, a shared blackboard, rituals of
 adversarial verification, and machines anywhere.
@@ -7,7 +7,7 @@ What it adds to plain Claude Code is the method: who is allowed to claim a numbe
 happens to a number after it is claimed, how a second agent is made to disagree on purpose,
 and what has to be true before anything leaves the machine under your name.
 
-*ciurma* is Italian for a ship's crew. Each member is a real Claude Code session with a
+*Pensiero Profondo* is Deep Thought, the computer from the Hitchhiker's Guide that took its time over a hard question. This one is a crew instead of a single machine. Each member is a real Claude Code session with a
 mandate, a model, a budget, and a place on a shared board. The board is where members declare
 what they are doing, state numbers, attack each other's numbers, and retract. A web UI shows
 every session live, and lets you send a message, interrupt, change the model, or stage a ritual.
@@ -32,38 +32,38 @@ by the agent that had not written the thing. The tool is that method, made into 
   source, and post their verdicts. The claim advances only if it survives.
 - **Live sessions.** Full transcripts, tool calls and results, thinking, usage and cost per
   member, role, and studio. A hard budget cap that interrupts every session.
-- **Machines anywhere.** The hub runs on one machine; `ciurma worker` attaches another over a
+- **Machines anywhere.** The hub runs on one machine; `pensiero worker` attaches another over a
   WebSocket with a token. Sessions on a remote box show up like local ones.
 
 ## Install
 
 Node 20 or newer and a working `claude` login (the sessions run under your own Claude Code
-subscription or API key; ciurma has no account and sends nothing anywhere).
+subscription or API key; pensiero has no account and sends nothing anywhere).
 
 ```bash
-git clone https://github.com/nerln/ciurma.git
-cd ciurma
+git clone https://github.com/nerln/pensiero-profondo.git
+cd pensiero
 npm install
 npm run build
-npm link            # gives you the `ciurma` command
+npm link            # gives you the `pensiero` command
 ```
 
 Then, in the directory of the project your crew will work on:
 
 ```bash
-ciurma init         # creates .ciurma/ with the studio, the default roles and a token
-ciurma hub          # starts the hub, the UI and a worker for this machine
+pensiero init         # creates .pensiero/ with the studio, the default roles and a token
+pensiero hub          # starts the hub, the UI and a worker for this machine
 ```
 
 Open http://127.0.0.1:4177. To attach another machine:
 
 ```bash
-ciurma worker --hub ws://HUB_HOST:4177/ws/worker --token TOKEN --name nuc
+pensiero worker --hub ws://HUB_HOST:4177/ws/worker --token TOKEN --name nuc
 ```
 
-The token is in `.ciurma/config.json`. A browser on the hub's own machine gets it from the
+The token is in `.pensiero/config.json`. A browser on the hub's own machine gets it from the
 page; a browser on another host adds `?token=TOKEN` to the URL once. Bind the hub to a
-non-loopback host with `ciurma hub --host 0.0.0.0` only on a network you trust.
+non-loopback host with `pensiero hub --host 0.0.0.0` only on a network you trust.
 
 ## How a crew works
 
@@ -92,8 +92,8 @@ See [docs/DESIGN.md](docs/DESIGN.md) for the objects, the verbs, and the reasoni
 | Scribe | Sonnet | writes for humans in the register of real issues; never sends |
 | Watch | Opus | reads transcripts read-only; steers only when needed; held to the same bar |
 
-Mandates are Markdown files. `ciurma init` copies them to `.ciurma/roles/` in your project, and
-`ciurma hub` re-reads that folder every time it starts. Edit them; they are the product.
+Mandates are Markdown files. `pensiero init` copies them to `.pensiero/roles/` in your project, and
+`pensiero hub` re-reads that folder every time it starts. Edit them; they are the product.
 
 ## Security model
 

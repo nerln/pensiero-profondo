@@ -1,6 +1,6 @@
-# ciurma: design
+# Pensiero Profondo: design
 
-*ciurma* (Italian: a ship's crew) is a web GUI for running many Claude Code sessions as one
+*Pensiero Profondo* (Deep Thought, after the computer in the Hitchhiker's Guide) is a web GUI for running many Claude Code sessions as one
 research crew: roles, a shared blackboard, rituals of adversarial verification, and machines
 that can be anywhere. It comes from a five-week campaign in which two Claude Code sessions,
 one on a laptop and one on a remote box, plus a supervising session and an external director
@@ -104,9 +104,9 @@ reader can see the threshold was not moved after the fact.
 One npm package, three parts, one process by default.
 
 ```
-ciurma hub        HTTP + WebSocket server, SQLite studio database, serves the UI,
+pensiero hub        HTTP + WebSocket server, SQLite studio database, serves the UI,
                   and embeds a worker for the local machine
-ciurma worker     the same session runner on a remote machine, connected to the hub
+pensiero worker     the same session runner on a remote machine, connected to the hub
                   over WebSocket with a shared token
 ui/               React + Vite, served by the hub, talks WebSocket
 ```
@@ -119,7 +119,7 @@ provenance line, margin `| ` on every quoted line, the list of actions that are 
 because an entry asked for them, and a closing line the test guarantees appears once.
 
 Authentication: the hub binds to localhost, and every API call and UI socket presents the token
-generated at `ciurma init`, loopback included, because a web page open on the owner's machine is
+generated at `pensiero init`, loopback included, because a web page open on the owner's machine is
 loopback too. The page served on loopback carries the token; another origin cannot read it (no
 CORS headers are ever sent) and cannot send the header without a preflight the hub does not
 answer. Worker sockets present the token in their first message and are refused if they carry

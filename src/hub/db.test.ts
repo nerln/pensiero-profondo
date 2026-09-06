@@ -30,7 +30,7 @@ describe('db', () => {
     });
 
     it('creates and reads back a studio', () => {
-      const studio = db.studio.create({ name: 'ciurma', goal: 'ship it', roots: ['/a', '/b'], budgetUsd: 10 });
+      const studio = db.studio.create({ name: 'pensiero', goal: 'ship it', roots: ['/a', '/b'], budgetUsd: 10 });
       expect(studio.id).toBeTruthy();
       expect(studio.createdAt).toBeTruthy();
       expect(db.studio.get()).toEqual(studio);
@@ -271,7 +271,7 @@ describe('db file persistence', () => {
   });
 
   it('creates the parent directory and survives close/reopen', () => {
-    dir = mkdtempSync(join(tmpdir(), 'ciurma-db-test-'));
+    dir = mkdtempSync(join(tmpdir(), 'pensiero-db-test-'));
     const dbPath = join(dir, 'nested', 'studio.db');
     expect(existsSync(join(dir, 'nested'))).toBe(false);
 

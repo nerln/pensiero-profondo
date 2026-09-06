@@ -16,18 +16,18 @@ export interface Snapshot {
 
 /** The hub writes the token into index.html when the page is served on loopback; a remote browser passes ?token=. */
 export function hubToken(): string {
-  const meta = document.querySelector('meta[name="ciurma-token"]')?.getAttribute('content');
+  const meta = document.querySelector('meta[name="pensiero-token"]')?.getAttribute('content');
   const fromUrl = new URLSearchParams(window.location.search).get('token');
   const token = meta || fromUrl || '';
-  if (fromUrl) { try { sessionStorage.setItem('ciurma-token', fromUrl); } catch { /* ignore */ } }
+  if (fromUrl) { try { sessionStorage.setItem('pensiero-token', fromUrl); } catch { /* ignore */ } }
   if (token) return token;
-  try { return sessionStorage.getItem('ciurma-token') ?? ''; } catch { return ''; }
+  try { return sessionStorage.getItem('pensiero-token') ?? ''; } catch { return ''; }
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, {
     ...init,
-    headers: { 'Content-Type': 'application/json', 'x-ciurma-token': hubToken(), ...(init?.headers ?? {}) },
+    headers: { 'Content-Type': 'application/json', 'x-pensiero-token': hubToken(), ...(init?.headers ?? {}) },
   });
   if (!res.ok) {
     const body = await res.text().catch(() => res.statusText);

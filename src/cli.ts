@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// ciurma init [dir] | ciurma hub [--port N] [--host H] [--dir D] [--no-worker] | ciurma worker --hub URL --token T [--name N]
+// pensiero init [dir] | pensiero hub [--port N] [--host H] [--dir D] [--no-worker] | pensiero worker --hub URL --token T [--name N]
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync, copyFileSync } from 'node:fs';
 import { join, resolve, dirname, basename } from 'node:path';
@@ -33,13 +33,13 @@ function parse(argv: string[]): Args {
 
 interface Config { token: string; port: number; host: string }
 
-function configPath(dir: string): string { return join(dir, '.ciurma', 'config.json'); }
-function dbPath(dir: string): string { return join(dir, '.ciurma', 'studio.db'); }
-function rolesDir(dir: string): string { return join(dir, '.ciurma', 'roles'); }
+function configPath(dir: string): string { return join(dir, '.pensiero', 'config.json'); }
+function dbPath(dir: string): string { return join(dir, '.pensiero', 'studio.db'); }
+function rolesDir(dir: string): string { return join(dir, '.pensiero', 'roles'); }
 
 function readConfig(dir: string): Config {
   const p = configPath(dir);
-  if (!existsSync(p)) throw new Error(`no studio in ${dir}. Run: ciurma init`);
+  if (!existsSync(p)) throw new Error(`no studio in ${dir}. Run: pensiero init`);
   return JSON.parse(readFileSync(p, 'utf8')) as Config;
 }
 
@@ -58,7 +58,7 @@ function init(dir: string, flags: Args['flags']): void {
   db.close();
   console.log(`studio created in ${dirname(p)}; the role mandates are in ${rolesDir(root)}, edit them and restart the hub`);
   console.log(`token for remote workers and non-local browsers: ${config.token}`);
-  console.log('next: ciurma hub');
+  console.log('next: pensiero hub');
 }
 
 async function hub(dir: string, flags: Args['flags']): Promise<void> {
@@ -67,11 +67,11 @@ async function hub(dir: string, flags: Args['flags']): Promise<void> {
   const port = Number(flags.port ?? config.port);
   const host = String(flags.host ?? config.host);
   const db = openDb(dbPath(root));
-  // The mandates in .ciurma/roles are the product: re-read on every start so edits take effect.
+  // The mandates in .pensiero/roles are the product: re-read on every start so edits take effect.
   for (const r of loadDefaultRoles(existsSync(rolesDir(root)) ? rolesDir(root) : undefined)) db.roles.upsert(r);
   const uiDir = [join(HERE, 'ui'), join(HERE, '..', 'dist', 'ui')].find((d) => existsSync(join(d, 'index.html'))) ?? null;
   const h = await startHub({ db, port, host, token: config.token, uiDir });
-  console.log(`ciurma hub at ${h.url}${uiDir ? '' : '  (UI not built)'}`);
+  console.log(`pensiero hub at ${h.url}${uiDir ? '' : '  (UI not built)'}`);
   let worker: { close(): Promise<void> } | null = null;
   if (!flags['no-worker']) {
     worker = runWorker({ hubUrl: `ws://127.0.0.1:${port}/ws/worker`, token: config.token, machineName: String(flags.name ?? hostname()), log: (s) => console.log(`[worker] ${s}`) });
@@ -84,7 +84,7 @@ async function hub(dir: string, flags: Args['flags']): Promise<void> {
 function worker(flags: Args['flags']): void {
   const hubUrl = String(flags.hub ?? '');
   const token = String(flags.token ?? '');
-  if (!hubUrl || !token) { console.error('usage: ciurma worker --hub ws://HOST:PORT/ws/worker --token TOKEN [--name NAME]'); process.exit(2); }
+  if (!hubUrl || !token) { console.error('usage: pensiero worker --hub ws://HOST:PORT/ws/worker --token TOKEN [--name NAME]'); process.exit(2); }
   const w = runWorker({ hubUrl, token, machineName: String(flags.name ?? hostname()), log: (s) => console.log(`[worker] ${s}`) });
   const stop = async () => { await w.close(); process.exit(0); };
   process.on('SIGINT', stop);
@@ -98,5 +98,5 @@ switch (args.cmd) {
   case 'worker': worker(args.flags); break;
   case 'mcp': runMcp(args.rest[0] ?? String(args.flags.dir ?? '.')).catch((e) => { console.error(e instanceof Error ? e.message : e); process.exit(1); }); break;
   default:
-    console.log('ciurma: run a crew of Claude Code agents as a research lab\n\n  ciurma init [dir]                 create a studio (roles, token, database)\n  ciurma hub [dir] [--port N]       start the hub with the UI and a local worker\n  ciurma worker --hub URL --token T attach this machine to a hub\n  ciurma mcp [dir]                  stdio MCP server: drive the crew from a Claude Code session\n');
+    console.log('pensiero: run a crew of Claude Code agents as a research lab\n\n  pensiero init [dir]                 create a studio (roles, token, database)\n  pensiero hub [dir] [--port N]       start the hub with the UI and a local worker\n  pensiero worker --hub URL --token T attach this machine to a hub\n  pensiero mcp [dir]                  stdio MCP server: drive the crew from a Claude Code session\n');
 }

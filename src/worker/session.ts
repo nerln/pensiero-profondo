@@ -125,7 +125,7 @@ export function startSession(spec: SessionStartSpec, handlers: SessionHandlers, 
   queue.push(spec.firstPrompt);
 
   const mcpServer = createSdkMcpServer({
-    name: 'ciurma',
+    name: 'pensiero',
     // Not deferred: the model must see both tools in its list without searching for them.
     alwaysLoad: true,
     tools: [
@@ -203,15 +203,15 @@ export function startSession(spec: SessionStartSpec, handlers: SessionHandlers, 
     resume: spec.resume ?? undefined,
     includePartialMessages: true,
     abortController,
-    mcpServers: { ciurma: mcpServer },
-    // Only the ciurma server: a crew session must not inherit the owner's MCP servers or connectors.
+    mcpServers: { pensiero: mcpServer },
+    // Only the pensiero server: a crew session must not inherit the owner's MCP servers or connectors.
     strictMcpConfig: true,
     // Project settings (CLAUDE.md, project hooks) yes; the owner's user-level settings no.
     // Project .mcp.json is ignored too because of strictMcpConfig above.
     settingSources: ['project'],
     canUseTool,
-    allowedTools: [...(spec.role.tools ?? []), 'mcp__ciurma__lavagna_scrivi', 'mcp__ciurma__lavagna_leggi'],
-    // `tools` restricts the built-in set; the ciurma MCP server is configured separately and unaffected.
+    allowedTools: [...(spec.role.tools ?? []), 'mcp__pensiero__lavagna_scrivi', 'mcp__pensiero__lavagna_leggi'],
+    // `tools` restricts the built-in set; the pensiero MCP server is configured separately and unaffected.
     ...(spec.role.tools !== undefined ? { tools: spec.role.tools } : {}),
     ...(spec.permissionMode === 'bypassPermissions' ? { allowDangerouslySkipPermissions: true } : {}),
   };

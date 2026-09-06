@@ -210,11 +210,11 @@ describe('startSession', () => {
     expect(options.effort).toBe('high');
     expect(options.permissionMode).toBe('dontAsk');
     expect(options.cwd).toBe('/tmp/studio');
-    expect(options.allowedTools).toEqual(['Read', 'Grep', 'mcp__ciurma__lavagna_scrivi', 'mcp__ciurma__lavagna_leggi']);
+    expect(options.allowedTools).toEqual(['Read', 'Grep', 'mcp__pensiero__lavagna_scrivi', 'mcp__pensiero__lavagna_leggi']);
     expect(options.resume).toBeUndefined();
     expect(options.includePartialMessages).toBe(true);
     expect(options.tools).toEqual(['Read', 'Grep']);
-    expect(options.mcpServers?.ciurma).toBeDefined();
+    expect(options.mcpServers?.pensiero).toBeDefined();
   });
 
   it('sets allowDangerouslySkipPermissions only for bypassPermissions', async () => {
@@ -272,7 +272,7 @@ describe('startSession', () => {
     const mockCreate = createSdkMcpServer as unknown as Mock;
     expect(mockCreate).toHaveBeenCalledTimes(1);
     const serverOptions = mockCreate.mock.calls[0][0] as { name: string; tools: Array<{ name: string; description: string; handler: (args: unknown, extra: unknown) => Promise<{ content: Array<{ type: string; text: string }> }> }> };
-    expect(serverOptions.name).toBe('ciurma');
+    expect(serverOptions.name).toBe('pensiero');
     expect(serverOptions.tools.map((t) => t.name)).toEqual(['lavagna_scrivi', 'lavagna_leggi']);
     for (const t of serverOptions.tools) expect(t.description.length).toBeGreaterThan(0);
 

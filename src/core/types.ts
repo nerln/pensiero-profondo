@@ -1,4 +1,4 @@
-// Shared vocabulary of ciurma. Everything the hub, the worker and the UI agree on lives here.
+// Shared vocabulary of pensiero. Everything the hub, the worker and the UI agree on lives here.
 // Times are ISO-8601 strings written by the hub's clock at the moment of the write, never by an agent.
 
 export type EffortLevel = 'low' | 'medium' | 'high' | 'xhigh' | 'max';

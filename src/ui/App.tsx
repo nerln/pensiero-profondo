@@ -54,7 +54,7 @@ export function App(): JSX.Element {
       <nav className="rail">
         <div className="rail-brand">
           <span className={`rail-conn${state.connected ? ' on' : ''}`} title={state.connected ? 'connected' : 'disconnected'} />
-          <span className="rail-brand-name">ciurma</span>
+          <span className="rail-brand-name">pensiero</span>
         </div>
         {NAV_ITEMS.map((item) => (
           <button

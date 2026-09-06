@@ -33,7 +33,7 @@ function next<T>(ws: WebSocket, pred: (m: T) => boolean, label = '?', timeoutMs 
   });
 }
 const api = async (method: string, path: string, body?: unknown, token = TOKEN) => {
-  const r = await fetch(`http://127.0.0.1:${port}${path}`, { method, headers: { 'content-type': 'application/json', ...(token ? { 'x-ciurma-token': token } : {}) }, body: body ? JSON.stringify(body) : undefined });
+  const r = await fetch(`http://127.0.0.1:${port}${path}`, { method, headers: { 'content-type': 'application/json', ...(token ? { 'x-pensiero-token': token } : {}) }, body: body ? JSON.stringify(body) : undefined });
   return { status: r.status, body: (await r.json()) as Record<string, unknown> };
 };
 

@@ -14,12 +14,12 @@ interface Snapshot { studio: { name: string; goal: string; budgetUsd: number | n
 
 export async function runMcp(dir: string): Promise<void> {
   const root = resolve(dir);
-  const cfgPath = join(root, '.ciurma', 'config.json');
-  if (!existsSync(cfgPath)) throw new Error(`no studio in ${root}: run ciurma init there first`);
+  const cfgPath = join(root, '.pensiero', 'config.json');
+  if (!existsSync(cfgPath)) throw new Error(`no studio in ${root}: run pensiero init there first`);
   const cfg = JSON.parse(readFileSync(cfgPath, 'utf8')) as { token: string; port: number; host: string };
   const base = `http://${cfg.host}:${cfg.port}`;
   const api = async <T>(method: string, path: string, body?: unknown): Promise<T> => {
-    const r = await fetch(base + path, { method, headers: { 'content-type': 'application/json', 'x-ciurma-token': cfg.token }, body: body ? JSON.stringify(body) : undefined });
+    const r = await fetch(base + path, { method, headers: { 'content-type': 'application/json', 'x-pensiero-token': cfg.token }, body: body ? JSON.stringify(body) : undefined });
     const j = (await r.json()) as T & { error?: string };
     if (!r.ok) throw new Error(j.error ?? `${method} ${path} failed with ${r.status}`);
     return j;
@@ -27,7 +27,7 @@ export async function runMcp(dir: string): Promise<void> {
   const text = (s: string) => ({ content: [{ type: 'text' as const, text: s }] });
   let lastRead = '';
 
-  const server = new McpServer({ name: 'ciurma', version: '0.1.0' });
+  const server = new McpServer({ name: 'pensiero', version: '0.1.0' });
 
   server.tool('crew_status', 'Who is on the crew right now: members with role, machine, status, cost; machines online; the studio goal.', {}, async () => {
     const s = await api<Snapshot>('GET', '/api/snapshot');
