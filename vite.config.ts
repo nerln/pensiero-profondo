@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'node:url';
-import { defineConfig } from 'vite';
+import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 
 // Vite config for the pensiero UI. Root is src/ui, output goes to dist/ui so the hub
@@ -10,6 +10,11 @@ export default defineConfig({
   build: {
     outDir: fileURLToPath(new URL('./dist/ui', import.meta.url)),
     emptyOutDir: true,
+  },
+  // vitest reads this file too: without its own root it would look for tests under src/ui.
+  test: {
+    root: fileURLToPath(new URL('.', import.meta.url)),
+    include: ['src/**/*.test.ts'],
   },
   server: {
     proxy: {
