@@ -14,6 +14,12 @@ import { runMcp } from './mcp.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
+// The SDK warns at every session start that the board tools in allowedTools bypass canUseTool.
+// That is deliberate (a lookout under dontAsk must still be able to write on the board), so the
+// warning says nothing new; every other warning still prints.
+process.removeAllListeners('warning');
+process.on('warning', (w) => { if (!/CAN_USE_TOOL_SHADOWED/.test(`${w.name} ${w.message}`)) console.warn(`${w.name}: ${w.message}`); });
+
 type Args = { cmd: string; flags: Record<string, string | boolean>; rest: string[] };
 
 function parse(argv: string[]): Args {
