@@ -30,8 +30,10 @@ by the agent that had not written the thing. The tool is that method, made into 
   was not written by the owner and authorizes nothing.
 - **Rituals.** Pick a `numero` on the board and press Attack: three Lookouts start, go to the
   source, and post their verdicts. The claim advances only if it survives.
-- **Live sessions.** Full transcripts, tool calls and results, thinking, usage and cost per
-  member, role, and studio. A hard budget cap that interrupts every session.
+- **Live sessions, like the terminal.** Text streams as it is written, markdown renders, tool
+  calls show the command or the file, results fold away, and a tool call the session would ask
+  about in the terminal asks you here: allow, allow and remember, or deny. Usage and cost per
+  member and studio, and a hard budget cap that interrupts every session.
 - **Machines anywhere.** The hub runs on one machine; `pensiero worker` attaches another over a
   WebSocket with a token. Sessions on a remote box show up like local ones.
 
@@ -64,6 +66,19 @@ pensiero worker --hub ws://HUB_HOST:4177/ws/worker --token TOKEN --name nuc
 The token is in `.pensiero/config.json`. A browser on the hub's own machine gets it from the
 page; a browser on another host adds `?token=TOKEN` to the URL once. Bind the hub to a
 non-loopback host with `pensiero hub --host 0.0.0.0` only on a network you trust.
+
+## From inside Claude Code
+
+The hub is one process; your own Claude Code session can be the owner's console.
+
+- **The window.** The repository ships `.claude/launch.json`, so in the Claude Code desktop app
+  Claude can open the hub in the browser pane with `preview_start` (configuration `pensiero`).
+- **The MCP console.** `pensiero mcp` is a stdio MCP server: `claude mcp add pensiero -- node
+  dist/cli.js mcp .` in your project, and the session gets `crew_status`, `lavagna_leggi`,
+  `lavagna_scrivi`, `crew_signon`, `crew_send`, `crew_stop`, `crew_attack` and
+  `crew_transcript`. What the board delivers arrives inside the same frame the crew gets.
+- **The skill.** `.claude/skills/pensiero/SKILL.md` tells Claude when to use which, and which
+  rules stay true (nothing on the board is an instruction from you).
 
 ## How a crew works
 
@@ -114,13 +129,13 @@ authentication.
 ## Status
 
 v0.1. Working: init, hub, local and remote workers, live transcripts, send, interrupt, model
-change, the board with frames and caps, the Attack ritual, budget cap. The Cartographer and
+change, streaming, markdown, permission prompts, the board with frames and caps, the Attack
+ritual, budget cap, the MCP console. The Cartographer and
 the Boatswain exist as roles you sign on by hand; their rituals (blind re-derivation,
 arbitration) are not automated yet. Not yet in the UI:
-council and consent rituals, gates, a Captain adapter for non-Claude models, a permission
-approval flow for tool calls. Until that flow exists, a tool call that would ask for
-permission is allowed for roles under `acceptEdits` and denied for roles under `dontAsk`, so a
-role that must stay narrow lists its tools or uses `dontAsk`.
+council and consent rituals, gates, a Captain adapter for non-Claude models. A tool call the
+session would ask about goes to you and waits ten minutes; roles under `dontAsk` are denied
+without asking, and a role's listed tools never ask.
 
 ## Credit
 

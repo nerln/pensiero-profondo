@@ -125,6 +125,14 @@ CORS headers are ever sent) and cannot send the header without a preflight the h
 answer. Worker sockets present the token in their first message and are refused if they carry
 a browser `Origin`. A worker may only act for members on its own machine. Nothing else.
 
+Permissions: a tool call the session would ask about in the terminal is forwarded to the hub
+and shown to the owner; the answer travels back to the session. Ten minutes without an answer
+is a deny. "Allow and remember" holds for that session only. Roles under `dontAsk` are denied
+without asking, and a role's listed tools are pre-approved.
+
+Streaming: the assistant's text reaches the UI as deltas while it is written; deltas are never
+stored, the final item is.
+
 Budget: every result message carries usage; the hub sums per member, role, and studio, and the
 studio cap is a hard stop that sends `interrupt()` to every session, then posts an `avviso`.
 
@@ -136,3 +144,6 @@ ritual end to end; budget panel; remote worker over WebSocket; README, MIT licen
 
 Later: council and consent rituals in the UI, gates, a Captain adapter for external models,
 a macOS shell.
+
+Inside Claude Code: `.claude/launch.json` opens the hub in the desktop app's browser pane, and
+`pensiero mcp` is a stdio MCP server that makes any Claude Code session the owner's console.
