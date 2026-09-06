@@ -122,6 +122,17 @@ export type TranscriptItem =
   | { kind: 'result'; subtype: string; usage: Usage; ts: string }
   | { kind: 'system'; text: string; ts: string };
 
+/** A tool call waiting for the owner's decision, as Claude Code would ask in the terminal. */
+export interface PermissionRequest {
+  reqId: string;
+  memberId: string;
+  toolName: string;
+  input: unknown;
+  /** One line the UI can show, e.g. the Bash command or the file path. */
+  summary: string;
+  createdAt: string;
+}
+
 export type RitualKind = 'attack' | 'rederive' | 'arbitrate' | 'council' | 'consent' | 'round';
 
 export interface Ritual {

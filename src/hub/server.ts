@@ -8,7 +8,7 @@ import { randomUUID } from 'node:crypto';
 import { WebSocketServer, WebSocket } from 'ws';
 import type { Db } from './db.js';
 import type { HubToUi, HubToWorker, UiToHub, WorkerToHub, SessionStartSpec } from '../core/protocol.js';
-import type { Machine, Member, Ritual, Studio, Voce, Role } from '../core/types.js';
+import type { Machine, Member, Ritual, Studio, Voce, Role, PermissionRequest } from '../core/types.js';
 import { EMPTY_USAGE } from '../core/types.js';
 import { validateVoce, cornice } from '../core/lavagna.js';
 import { Deliverer, takeDelivery } from './deliver.js';
@@ -37,6 +37,9 @@ export function startHub(opts: HubOptions): Promise<Hub> {
   const uiClients = new Set<WebSocket>();
   const memberMachine = new Map<string, string>();         // memberId -> machineId
   let budgetTripped = false;                               // latched until the cap is raised
+  let closing = false;
+  const permissions = new Map<string, PermissionRequest & { machineId: string; timer: NodeJS.Timeout }>();
+  const PERMISSION_TIMEOUT_MS = 10 * 60 * 1000;
 
   const broadcast = (msg: HubToUi) => {
     const data = JSON.stringify(msg);
@@ -64,6 +67,7 @@ export function startHub(opts: HubOptions): Promise<Hub> {
     members: db.members.list(),
     voci: db.voci.list().slice(-500),
     rituals: db.rituals.list(),
+    permissions: [...permissions.values()].map(({ machineId: _m, timer: _t, ...req }) => req),
   });
 
   // ---- blackboard writes: the one path every entry takes ----
@@ -81,6 +85,20 @@ export function startHub(opts: HubOptions): Promise<Hub> {
 
   function hubNotice(text: string, to = 'all'): void {
     appendVoce({ verb: 'avviso', text, to }, { kind: 'hub' });
+  }
+
+  function resolvePermission(reqId: string, allow: boolean, remember: boolean, by: 'owner' | 'timeout' | 'policy'): boolean {
+    const p = permissions.get(reqId);
+    if (!p) return false;
+    clearTimeout(p.timer);
+    permissions.delete(reqId);
+    toWorker(p.machineId, { t: 'permission.result', reqId, allow, remember, message: allow ? undefined : `declined (${by})` });
+    broadcast({ t: 'permission.resolved', memberId: p.memberId, reqId, allow, by });
+    return true;
+  }
+
+  function dropPermissions(memberId: string): void {
+    for (const [id, p] of permissions) if (p.memberId === memberId) resolvePermission(id, false, false, 'policy');
   }
 
   // ---- members ----
@@ -181,7 +199,7 @@ export function startHub(opts: HubOptions): Promise<Hub> {
         if (!m) return;
         const updated = db.members.update(m.id, { status: raw.status, sessionId: raw.sessionId ?? m.sessionId, error: raw.error ?? null });
         broadcast({ t: 'member.updated', member: updated });
-        if (raw.status === 'stopped' || raw.status === 'error') for (const r of settleAll(db)) broadcast({ t: 'ritual.updated', ritual: r });
+        if (raw.status === 'stopped' || raw.status === 'error') { dropPermissions(m.id); for (const r of settleAll(db)) broadcast({ t: 'ritual.updated', ritual: r }); }
         return;
       }
       case 'session.item': {
@@ -190,6 +208,20 @@ export function startHub(opts: HubOptions): Promise<Hub> {
         const item = { ...raw.item, ts: new Date().toISOString() };
         db.transcripts.append(raw.memberId, item);
         broadcast({ t: 'transcript.item', memberId: raw.memberId, item });
+        return;
+      }
+      case 'session.delta': {
+        if (!own(raw.memberId)) return;
+        broadcast({ t: 'transcript.delta', memberId: raw.memberId, blockIndex: raw.blockIndex, kind: raw.kind, delta: raw.delta });
+        return;
+      }
+      case 'permission.request': {
+        const m = own(raw.memberId);
+        if (!m) return;
+        const req: PermissionRequest = { reqId: raw.reqId, memberId: m.id, toolName: raw.toolName, input: raw.input, summary: raw.summary, createdAt: new Date().toISOString() };
+        const timer = setTimeout(() => resolvePermission(raw.reqId, false, false, 'timeout'), PERMISSION_TIMEOUT_MS);
+        permissions.set(raw.reqId, { ...req, machineId: conn.machineId, timer });
+        broadcast({ t: 'permission.requested', request: req });
         return;
       }
       case 'session.usage': {
@@ -222,7 +254,7 @@ export function startHub(opts: HubOptions): Promise<Hub> {
   }
 
   function onWorkerClose(machineId: string | null): void {
-    if (!machineId) return;
+    if (!machineId || closing) return;
     workers.delete(machineId);
     const machine = db.machines.setStatus(machineId, 'offline');
     broadcast({ t: 'machine.updated', machine });
@@ -275,6 +307,12 @@ export function startHub(opts: HubOptions): Promise<Hub> {
       });
     }
     if ((x = m(/^\/api\/members\/([^/]+)\/transcript$/)) && method === 'GET') return db.transcripts.list(x[1]);
+    if ((x = m(/^\/api\/members\/([^/]+)\/permissions\/([^/]+)$/)) && method === 'POST') {
+      const p = permissions.get(x[2]);
+      if (!p || p.memberId !== x[1]) throw new HttpError(404, 'no such pending permission');
+      resolvePermission(x[2], body.allow === true, body.remember === true, 'owner');
+      return { ok: true };
+    }
     if ((x = m(/^\/api\/members\/([^/]+)\/(send|interrupt|stop|model)$/)) && method === 'POST') {
       const member = db.members.get(x[1]);
       if (!member) throw new HttpError(404, 'no such member');
@@ -289,6 +327,7 @@ export function startHub(opts: HubOptions): Promise<Hub> {
       } else if (action === 'interrupt') {
         toMember(member, { t: 'session.interrupt', memberId: member.id });
       } else if (action === 'stop') {
+        dropPermissions(member.id);
         toMember(member, { t: 'session.stop', memberId: member.id });
         broadcast({ t: 'member.updated', member: db.members.update(member.id, { status: 'stopped' }) });
       } else {
@@ -302,6 +341,7 @@ export function startHub(opts: HubOptions): Promise<Hub> {
     if ((x = m(/^\/api\/members\/([^/]+)$/)) && method === 'DELETE') {
       const member = db.members.get(x[1]);
       if (!member) throw new HttpError(404, 'no such member');
+      dropPermissions(member.id);
       toMember(member, { t: 'session.stop', memberId: member.id });
       db.members.remove(member.id);
       memberMachine.delete(member.id);
@@ -386,7 +426,9 @@ export function startHub(opts: HubOptions): Promise<Hub> {
       resolve({
         url,
         close: () => new Promise<void>((done) => {
+          closing = true;
           clearInterval(ping);
+          for (const p of permissions.values()) clearTimeout(p.timer);
           deliverer.close();
           for (const w of workers.values()) w.ws.close();
           for (const c of uiClients) c.close();

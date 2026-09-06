@@ -641,6 +641,41 @@ p {
   max-width: 640px;
 }
 
+.role-select-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 8px;
+}
+
+.role-select-row select {
+  flex: 1;
+  min-width: 96px;
+}
+
+.role-meta {
+  color: var(--text-faint);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.role-mandate {
+  margin-top: 6px;
+}
+
+.role-mandate summary {
+  cursor: pointer;
+  font-size: 11.5px;
+  color: var(--text-dim);
+}
+
+.role-mandate p {
+  margin: 6px 0 0;
+  font-size: 12.5px;
+  color: var(--text-dim);
+  white-space: pre-wrap;
+}
+
 /* ---------- member view ---------- */
 
 .member-header {
@@ -992,8 +1027,44 @@ p {
   font-style: italic;
 }
 
+.ritual-outcome-words {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+
+.outcome-chip {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.outcome-chip[data-survives='true'] {
+  color: var(--success);
+  background: var(--success-bg);
+}
+
+.outcome-chip[data-survives='false'] {
+  color: var(--danger);
+  background: var(--danger-bg);
+}
+
+.ritual-outcome-raw {
+  margin-bottom: 6px;
+}
+
+.ritual-outcome-raw summary {
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
 .ritual-outcome {
-  margin: 0;
+  margin: 6px 0 0;
   padding: 8px 10px;
   background: var(--bg-inset);
   border-radius: var(--radius);

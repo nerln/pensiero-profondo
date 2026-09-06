@@ -15,6 +15,26 @@ export interface SessionHandlers {
   onUsage(usage: Usage): void; // cumulative for this session
   lavagnaScrivi(args: { verb: string; text: string; to: string; replyTo: string | null; meta: Record<string, unknown> }): Promise<{ ok: boolean; voceId?: string; error?: string }>;
   lavagnaLeggi(since?: string): Promise<string>; // returns the already-framed text
+  /** A streamed fragment of the assistant's current message (text or thinking). */
+  onDelta(blockIndex: number, kind: 'text' | 'thinking', delta: string): void;
+  /** A tool call that needs the owner's decision. Resolve with allow/deny; `remember` skips the question next time. */
+  permission(req: { toolName: string; input: unknown; summary: string }): Promise<{ allow: boolean; remember?: boolean; message?: string }>;
+}
+
+/** One line the owner can decide on, the way Claude Code shows a tool call before asking. */
+export function permissionSummary(toolName: string, input: unknown): string {
+  const i = (input ?? {}) as Record<string, unknown>;
+  const s = (v: unknown) => (typeof v === 'string' ? v : JSON.stringify(v) ?? '');
+  let line: string;
+  switch (toolName) {
+    case 'Bash': line = s(i.command); break;
+    case 'Read': case 'Write': case 'Edit': case 'MultiEdit': case 'NotebookEdit': line = s(i.file_path ?? i.notebook_path); break;
+    case 'Glob': case 'Grep': line = `${s(i.pattern)}${i.path ? ` in ${s(i.path)}` : ''}`; break;
+    case 'WebFetch': line = s(i.url); break;
+    case 'WebSearch': line = s(i.query); break;
+    default: line = s(input);
+  }
+  return line.length > 200 ? line.slice(0, 200) + '…' : line;
 }
 
 export interface SessionHandle {
@@ -154,10 +174,23 @@ export function startSession(spec: SessionStartSpec, handlers: SessionHandlers, 
     ],
   });
 
-  // No UI approval flow yet, so a tool that would prompt is allowed here. That means a role
-  // without a `tools` list runs with every tool. Roles that must stay narrow list their tools
-  // (see src/roles) or use dontAsk, which denies instead of prompting.
-  const canUseTool: CanUseTool = async (_toolName, input) => ({ behavior: 'allow', updatedInput: input });
+  // A tool the SDK would ask about goes to the owner, the way Claude Code asks in the terminal.
+  // Pre-approved tools (the role's list and the board tools) never reach this callback.
+  const remembered = new Set<string>();
+  const canUseTool: CanUseTool = async (toolName, input, opts) => {
+    if (spec.permissionMode === 'bypassPermissions' || remembered.has(toolName)) return { behavior: 'allow', updatedInput: input };
+    handlers.onStatus('waiting');
+    try {
+      const decision = await Promise.race([
+        handlers.permission({ toolName, input, summary: permissionSummary(toolName, input) }),
+        new Promise<{ allow: boolean; remember?: boolean; message?: string }>((resolve) => opts.signal.addEventListener('abort', () => resolve({ allow: false, message: 'interrupted' }), { once: true })),
+      ]);
+      if (decision.allow && decision.remember) remembered.add(toolName);
+      return decision.allow ? { behavior: 'allow', updatedInput: input } : { behavior: 'deny', message: decision.message ?? 'the owner declined this tool call' };
+    } finally {
+      handlers.onStatus('working');
+    }
+  };
 
   const abortController = new AbortController();
 
@@ -168,7 +201,7 @@ export function startSession(spec: SessionStartSpec, handlers: SessionHandlers, 
     permissionMode: spec.permissionMode,
     cwd: spec.cwd,
     resume: spec.resume ?? undefined,
-    includePartialMessages: false,
+    includePartialMessages: true,
     abortController,
     mcpServers: { ciurma: mcpServer },
     // Only the ciurma server: a crew session must not inherit the owner's MCP servers or connectors.
@@ -205,6 +238,12 @@ export function startSession(spec: SessionStartSpec, handlers: SessionHandlers, 
             } else if (block.type === 'tool_use') {
               handlers.onItem({ kind: 'tool_use', name: block.name, input: block.input, toolUseId: block.id, ts });
             }
+          }
+        } else if (message.type === 'stream_event') {
+          const ev = message.event;
+          if (ev.type === 'content_block_delta') {
+            if (ev.delta.type === 'text_delta') handlers.onDelta(ev.index, 'text', ev.delta.text);
+            else if (ev.delta.type === 'thinking_delta') handlers.onDelta(ev.index, 'thinking', ev.delta.thinking);
           }
         } else if (message.type === 'user') {
           const content: unknown = message.message.content;

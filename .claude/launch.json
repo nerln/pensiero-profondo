@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "ciurma",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["dist/cli.js", "hub", "."],
+      "port": 4177
+    }
+  ]
+}

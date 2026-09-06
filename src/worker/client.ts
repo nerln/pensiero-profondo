@@ -11,6 +11,7 @@ import type { Verb } from '../core/types.js';
 import { startSession, type QueryFn, type SessionHandle } from './session.js';
 
 const MAX_BUFFERED = 1000;
+const PERMISSION_TIMEOUT_MS = 20 * 60 * 1000;
 const LAVAGNA_TIMEOUT_MS = 30000;
 const INITIAL_BACKOFF_MS = 1000;
 const MAX_BACKOFF_MS = 30000;
@@ -92,6 +93,17 @@ export function runWorker(opts: {
         onUsage: (usage) => send({ t: 'session.usage', memberId: spec.memberId, usage }),
         lavagnaScrivi: (args) => callLavagnaScrivi(spec.memberId, args),
         lavagnaLeggi: (since) => callLavagnaLeggi(spec.memberId, since),
+        onDelta: (blockIndex, kind, delta) => send({ t: 'session.delta', memberId: spec.memberId, blockIndex, kind, delta }),
+        permission: async (req) => {
+          const reqId = randomUUID();
+          send({ t: 'permission.request', memberId: spec.memberId, reqId, toolName: req.toolName, input: req.input, summary: req.summary });
+          try {
+            const r = await waitForResult<Extract<HubToWorker, { t: 'permission.result' }>>(reqId, PERMISSION_TIMEOUT_MS);
+            return { allow: r.allow, remember: r.remember, message: r.message };
+          } catch {
+            return { allow: false, message: 'no decision arrived from the hub' };
+          }
+        },
       },
       { queryFn: opts.queryFn },
     );
@@ -132,7 +144,8 @@ export function runWorker(opts: {
         sessions.get(msg.memberId)?.setModel(msg.model).catch((e) => log(`setModel failed: ${String(e)}`));
         return;
       case 'lavagna.scrivi.result':
-      case 'lavagna.leggi.result': {
+      case 'lavagna.leggi.result':
+      case 'permission.result': {
         const waiter = pending.get(msg.reqId);
         if (!waiter) return;
         pending.delete(msg.reqId);

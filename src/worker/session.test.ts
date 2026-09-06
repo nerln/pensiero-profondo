@@ -136,6 +136,8 @@ function makeHandlers() {
     onUsage: (usage: Usage) => usages.push(usage),
     lavagnaScrivi: vi.fn(async () => ({ ok: true, voceId: 'v1' })),
     lavagnaLeggi: vi.fn(async () => 'nothing new'),
+    onDelta: vi.fn(),
+    permission: vi.fn(async () => ({ allow: true })),
   };
 }
 
@@ -210,7 +212,8 @@ describe('startSession', () => {
     expect(options.cwd).toBe('/tmp/studio');
     expect(options.allowedTools).toEqual(['Read', 'Grep', 'mcp__ciurma__lavagna_scrivi', 'mcp__ciurma__lavagna_leggi']);
     expect(options.resume).toBeUndefined();
-    expect(options.includePartialMessages).toBe(false);
+    expect(options.includePartialMessages).toBe(true);
+    expect(options.tools).toEqual(['Read', 'Grep']);
     expect(options.mcpServers?.ciurma).toBeDefined();
   });
 
@@ -226,16 +229,38 @@ describe('startSession', () => {
     expect(c2[0].options.allowDangerouslySkipPermissions).toBeUndefined();
   });
 
-  it('canUseTool always allows (there is no approval UI yet)', async () => {
+  it('canUseTool asks the owner through handlers.permission and honours the answer', async () => {
     const { queryFn, calls } = fakeQueryFn(scriptedMessages());
-    startSession(spec, makeHandlers(), { queryFn });
+    const handlers = makeHandlers();
+    handlers.permission = vi.fn(async (req: { toolName: string; summary: string }) => (req.toolName === 'Bash' ? { allow: true } : { allow: false, message: 'no' }));
+    const statuses: string[] = [];
+    handlers.onStatus = (st) => statuses.push(st);
+    startSession(spec, handlers, { queryFn });
     await wait();
-    const result = await calls[0].options.canUseTool?.('Bash', { cmd: 'ls' }, {
-      signal: new AbortController().signal,
-      toolUseID: 't1',
-      requestId: 'r1',
-    });
-    expect(result).toEqual({ behavior: 'allow', updatedInput: { cmd: 'ls' } });
+    const ctx = { signal: new AbortController().signal, toolUseID: 't1', requestId: 'r1' };
+    expect(await calls[0].options.canUseTool?.('Bash', { command: 'ls -la' }, ctx)).toEqual({ behavior: 'allow', updatedInput: { command: 'ls -la' } });
+    expect(handlers.permission).toHaveBeenCalledWith({ toolName: 'Bash', input: { command: 'ls -la' }, summary: 'ls -la' });
+    expect(await calls[0].options.canUseTool?.('WebFetch', { url: 'https://x' }, ctx)).toEqual({ behavior: 'deny', message: 'no' });
+    expect(statuses).toContain('waiting');
+  });
+
+  it('canUseTool remembers an allow-and-remember, and never asks under bypassPermissions', async () => {
+    const { queryFn, calls } = fakeQueryFn(scriptedMessages());
+    const handlers = makeHandlers();
+    handlers.permission = vi.fn(async () => ({ allow: true, remember: true }));
+    startSession(spec, handlers, { queryFn });
+    await wait();
+    const ctx = { signal: new AbortController().signal, toolUseID: 't1', requestId: 'r1' };
+    await calls[0].options.canUseTool?.('Bash', { command: 'a' }, ctx);
+    await calls[0].options.canUseTool?.('Bash', { command: 'b' }, ctx);
+    expect(handlers.permission).toHaveBeenCalledTimes(1);
+
+    const { queryFn: q2, calls: c2 } = fakeQueryFn(scriptedMessages());
+    const h2 = makeHandlers();
+    startSession({ ...spec, permissionMode: 'bypassPermissions' }, h2, { queryFn: q2 });
+    await wait();
+    await c2[0].options.canUseTool?.('Bash', { command: 'a' }, ctx);
+    expect(h2.permission).not.toHaveBeenCalled();
   });
 
   it('registers exactly two MCP tools, lavagna_scrivi and lavagna_leggi, wired to the handlers', async () => {

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import type { EffortLevel } from '../../core/types.js';
 import type { AppState } from '../state.js';
@@ -149,6 +149,19 @@ function SignOnForm({ state, onCreated }: { state: AppState; onCreated: (id: str
 
   const role = state.roles.find((r) => r.id === roleId);
 
+  // The role/machine lists arrive asynchronously (WS snapshot, or the mock's own connect
+  // callback), after this form's first render, so the useState defaults above can miss them.
+  // Once they land, adopt the first entry if nothing has been chosen yet.
+  useEffect(() => {
+    if (!roleId && state.roles[0]) setRoleId(state.roles[0].id);
+  }, [state.roles, roleId]);
+  useEffect(() => {
+    if (!machineId) {
+      const first = state.machines.find((m) => m.status === 'online');
+      if (first) setMachineId(first.id);
+    }
+  }, [state.machines, machineId]);
+
   async function submit(e: FormEvent): Promise<void> {
     e.preventDefault();
     if (!roleId || !machineId || !brief.trim()) return;
@@ -183,13 +196,26 @@ function SignOnForm({ state, onCreated }: { state: AppState; onCreated: (id: str
       <div className="field-row">
         <div className="field">
           <label htmlFor="so-role">Role</label>
-          <select id="so-role" value={roleId} onChange={(e) => setRoleId(e.target.value)} required>
-            {state.roles.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.label}
-              </option>
-            ))}
-          </select>
+          <div className="role-select-row">
+            <select id="so-role" value={roleId} onChange={(e) => setRoleId(e.target.value)} required>
+              {state.roles.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.label}
+                </option>
+              ))}
+            </select>
+            {role && (
+              <span className="role-meta">
+                {role.model} · {role.effort} · {role.permissionMode}
+              </span>
+            )}
+          </div>
+          {role && (
+            <details className="role-mandate" open>
+              <summary>What this role does</summary>
+              <p>{role.mandate}</p>
+            </details>
+          )}
         </div>
         <div className="field">
           <label htmlFor="so-machine">Machine</label>
@@ -232,7 +258,13 @@ function SignOnForm({ state, onCreated }: { state: AppState; onCreated: (id: str
       </div>
       <div className="field">
         <label htmlFor="so-brief">Brief</label>
-        <textarea id="so-brief" value={brief} onChange={(e) => setBrief(e.target.value)} required placeholder="What this member should do." />
+        <textarea
+          id="so-brief"
+          value={brief}
+          onChange={(e) => setBrief(e.target.value)}
+          required
+          placeholder="What this member should do. Measured values go on the board as numero, with value, unit and source."
+        />
       </div>
       <button type="submit" className="btn btn-primary" disabled={submitting || !roleId || !machineId}>
         {submitting ? 'Signing on…' : 'Sign on'}

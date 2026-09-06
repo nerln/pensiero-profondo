@@ -1,10 +1,11 @@
 import { memo, useMemo, useState } from 'react';
-import type { Author, Verb, Verdict, Voce } from '../../core/types.js';
+import type { Author, Ritual, Verb, Verdict, Voce } from '../../core/types.js';
 import { VERBS } from '../../core/types.js';
 import type { AppState } from '../state.js';
 import { api } from '../api.js';
+import { resolveAddressee } from '../utils.js';
 import { AbsoluteTime } from './Time.js';
-import { VerbTag, VerdictTag } from './Tag.js';
+import { VerbTag, VerdictTag, VERB_GLOSS } from './Tag.js';
 
 const OWNER_VERBS: Verb[] = ['messaggio', 'avviso', 'consenso', 'proposta'];
 
@@ -20,20 +21,31 @@ function authorLabel(a: Author): string {
 
 interface ClaimStageInfo {
   label: string;
+  retracted: boolean;
 }
 
 function claimStage(voce: Voce, all: Voce[]): ClaimStageInfo {
   const replies = all.filter((v) => v.replyTo === voce.id);
-  if (replies.some((v) => v.verb === 'ritratto')) return { label: 'retracted' };
+  if (replies.some((v) => v.verb === 'ritratto')) return { label: 'retracted', retracted: true };
   const attacks = replies.filter((v) => v.verb === 'attacco');
-  if (attacks.length === 0) return { label: 'declared' };
+  if (attacks.length === 0) return { label: 'declared', retracted: false };
   const count = (verdict: Verdict) => attacks.filter((v) => v.meta.verdict === verdict).length;
   const refuted = count('refuted');
   const holds = count('holds');
   const undecidable = count('undecidable');
   const parts = [`${refuted} refuted`, `${holds} holds`];
   if (undecidable > 0) parts.push(`${undecidable} undecidable`);
-  return { label: `attacked: ${parts.join(', ')}` };
+  return { label: `attacked: ${parts.join(', ')}`, retracted: false };
+}
+
+/** The running attack ritual targeting this entry, if any. */
+function runningAttack(voceId: string, rituals: Ritual[]): Ritual | undefined {
+  return rituals.find((r) => r.kind === 'attack' && r.status === 'running' && r.targetVoceId === voceId);
+}
+
+function pendingCount(ritual: Ritual): number {
+  const p = ritual.outcome.pending;
+  return typeof p === 'number' ? p : ritual.memberIds.length;
 }
 
 interface VoceTreeNode {
@@ -64,7 +76,7 @@ function buildTree(list: Voce[]): VoceTreeNode[] {
   }
   return roots
     .slice()
-    .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .map(toNode);
 }
 
@@ -105,7 +117,7 @@ export function BoardView({ state, onOpenMember }: { state: AppState; onOpenMemb
           <option value="all">all verbs</option>
           {VERBS.map((v) => (
             <option key={v} value={v}>
-              {v}
+              {v} · {VERB_GLOSS[v]}
             </option>
           ))}
         </select>
@@ -136,6 +148,8 @@ export function BoardView({ state, onOpenMember }: { state: AppState; onOpenMemb
               depth={0}
               allVoci={state.voci}
               members={state.members}
+              roles={state.roles}
+              rituals={state.rituals}
               onOpenMember={onOpenMember}
               onReply={setReplyTo}
             />
@@ -151,6 +165,8 @@ function VoceNode({
   depth,
   allVoci,
   members,
+  roles,
+  rituals,
   onOpenMember,
   onReply,
 }: {
@@ -158,14 +174,16 @@ function VoceNode({
   depth: number;
   allVoci: Voce[];
   members: AppState['members'];
+  roles: AppState['roles'];
+  rituals: AppState['rituals'];
   onOpenMember: (id: string) => void;
   onReply: (voce: Voce) => void;
 }): JSX.Element {
   return (
     <>
-      <VoceItem voce={node.voce} depth={depth} allVoci={allVoci} members={members} onOpenMember={onOpenMember} onReply={onReply} />
+      <VoceItem voce={node.voce} depth={depth} allVoci={allVoci} members={members} roles={roles} rituals={rituals} onOpenMember={onOpenMember} onReply={onReply} />
       {node.children.map((child) => (
-        <VoceNode key={child.voce.id} node={child} depth={depth + 1} allVoci={allVoci} members={members} onOpenMember={onOpenMember} onReply={onReply} />
+        <VoceNode key={child.voce.id} node={child} depth={depth + 1} allVoci={allVoci} members={members} roles={roles} rituals={rituals} onOpenMember={onOpenMember} onReply={onReply} />
       ))}
     </>
   );
@@ -176,6 +194,8 @@ const VoceItem = memo(function VoceItem({
   depth,
   allVoci,
   members,
+  roles,
+  rituals,
   onOpenMember,
   onReply,
 }: {
@@ -183,12 +203,15 @@ const VoceItem = memo(function VoceItem({
   depth: number;
   allVoci: Voce[];
   members: AppState['members'];
+  roles: AppState['roles'];
+  rituals: AppState['rituals'];
   onOpenMember: (id: string) => void;
   onReply: (voce: Voce) => void;
 }): JSX.Element {
   const isMember = voce.author.kind === 'member';
   const memberExists = isMember && members.some((m) => m.id === (voce.author as Extract<Author, { kind: 'member' }>).memberId);
   const stage = voce.verb === 'numero' ? claimStage(voce, allVoci) : null;
+  const attackRitual = voce.verb === 'numero' ? runningAttack(voce.id, rituals) : undefined;
   const [ritualRunning, setRitualRunning] = useState(false);
 
   async function attack(): Promise<void> {
@@ -218,7 +241,7 @@ const VoceItem = memo(function VoceItem({
         )}
         {voce.author.kind === 'member' && <span className="voce-author-role">{voce.author.role} · {voce.author.machine}</span>}
         <span className="voce-spacer" />
-        <span className="voce-to">to {voce.to}</span>
+        <span className="voce-to">to {resolveAddressee(voce.to, members, roles.map((r) => r.name))}</span>
         <AbsoluteTime iso={voce.createdAt} />
       </div>
       <div className="voce-text">{voce.text}</div>
@@ -239,10 +262,14 @@ const VoceItem = memo(function VoceItem({
         <button type="button" className="btn btn-small" onClick={() => onReply(voce)}>
           Reply
         </button>
-        {voce.verb === 'numero' && (
-          <button type="button" className="btn btn-small" onClick={() => void attack()} disabled={ritualRunning}>
-            {ritualRunning ? 'Attacking…' : 'Attack'}
-          </button>
+        {voce.verb === 'numero' && !stage?.retracted && (
+          attackRitual ? (
+            <span className="claim-stage">under attack ({pendingCount(attackRitual)} pending)</span>
+          ) : (
+            <button type="button" className="btn btn-small" onClick={() => void attack()} disabled={ritualRunning}>
+              {ritualRunning ? 'Attacking…' : 'Attack'}
+            </button>
+          )
         )}
       </div>
     </div>

@@ -82,7 +82,7 @@ export function App(): JSX.Element {
           ) : view === 'board' ? (
             <BoardView state={state} onOpenMember={openMember} />
           ) : view === 'rituals' ? (
-            <RitualsView state={state} />
+            <RitualsView state={state} onShowOnBoard={() => setView('board')} />
           ) : (
             <MachinesView state={state} />
           )}

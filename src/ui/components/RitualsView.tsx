@@ -1,4 +1,5 @@
 import type { AppState } from '../state.js';
+import { memberNameOrId } from '../utils.js';
 import { AbsoluteTime } from './Time.js';
 
 function MemberList({ ids, members }: { ids: string[]; members: AppState['members'] }): JSX.Element {
@@ -6,11 +7,13 @@ function MemberList({ ids, members }: { ids: string[]; members: AppState['member
   return (
     <>
       {ids.map((id, i) => {
-        const m = members.find((mm) => mm.id === id);
+        const known = members.some((mm) => mm.id === id);
         return (
           <span key={id}>
             {i > 0 && ', '}
-            {m ? m.name : <span className="missing" title="member no longer present">{id}</span>}
+            {known ? memberNameOrId(id, members) : (
+              <span className="missing" title="member no longer present">{memberNameOrId(id, members)}</span>
+            )}
           </span>
         );
       })}
@@ -18,7 +21,34 @@ function MemberList({ ids, members }: { ids: string[]; members: AppState['member
   );
 }
 
-export function RitualsView({ state }: { state: AppState }): JSX.Element {
+function num(outcome: Record<string, unknown>, key: string): number {
+  const v = outcome[key];
+  return typeof v === 'number' ? v : 0;
+}
+
+/** Words rendering of an attack ritual's outcome, plus a survives/refuted chip when the ritual
+ *  has settled. Kept separate from the raw JSON, which stays available in a collapsed details. */
+function AttackOutcome({ outcome }: { outcome: Record<string, unknown> }): JSX.Element {
+  const refuted = num(outcome, 'refuted');
+  const holds = num(outcome, 'holds');
+  const undecidable = num(outcome, 'undecidable');
+  const pending = num(outcome, 'pending');
+  const survives = outcome.survives;
+  return (
+    <div className="ritual-outcome-words">
+      <span>
+        {refuted} refuted, {holds} hold, {undecidable} undecidable, {pending} pending
+      </span>
+      {typeof survives === 'boolean' && (
+        <span className="outcome-chip" data-survives={survives}>
+          {survives ? 'claim survives' : 'claim refuted'}
+        </span>
+      )}
+    </div>
+  );
+}
+
+export function RitualsView({ state, onShowOnBoard }: { state: AppState; onShowOnBoard: () => void }): JSX.Element {
   const rituals = state.rituals.slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
   return (
@@ -45,12 +75,28 @@ export function RitualsView({ state }: { state: AppState }): JSX.Element {
                   </span>
                 </div>
                 {r.targetVoceId && (
-                  <div className="ritual-target">{target ? target.text : `(entry ${r.targetVoceId} no longer on the board)`}</div>
+                  <div className="ritual-target">
+                    {target ? (
+                      <>
+                        {target.text.slice(0, 120)}
+                        {target.text.length > 120 ? '…' : ''}{' '}
+                        <button type="button" className="back-link" onClick={onShowOnBoard}>
+                          show on board
+                        </button>
+                      </>
+                    ) : (
+                      `(entry ${r.targetVoceId} no longer on the board)`
+                    )}
+                  </div>
                 )}
                 <div className="ritual-members">
                   members: <MemberList ids={r.memberIds} members={state.members} />
                 </div>
-                <pre className="ritual-outcome">{Object.keys(r.outcome).length > 0 ? JSON.stringify(r.outcome, null, 2) : '{}'}</pre>
+                {r.kind === 'attack' && <AttackOutcome outcome={r.outcome} />}
+                <details className="ritual-outcome-raw">
+                  <summary>raw outcome</summary>
+                  <pre className="ritual-outcome">{Object.keys(r.outcome).length > 0 ? JSON.stringify(r.outcome, null, 2) : '{}'}</pre>
+                </details>
                 <div className="ritual-times">
                   <span>created <AbsoluteTime iso={r.createdAt} /></span>
                   <span>{r.finishedAt ? <>finished <AbsoluteTime iso={r.finishedAt} /></> : 'still running'}</span>

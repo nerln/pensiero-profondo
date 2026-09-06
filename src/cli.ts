@@ -10,6 +10,7 @@ import { openDb } from './hub/db.js';
 import { startHub } from './hub/server.js';
 import { runWorker } from './worker/client.js';
 import { loadDefaultRoles, DEFAULT_ROLES_DIR } from './core/roles.js';
+import { runMcp } from './mcp.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -95,6 +96,7 @@ switch (args.cmd) {
   case 'init': init(args.rest[0] ?? String(args.flags.dir ?? '.'), args.flags); break;
   case 'hub': hub(args.rest[0] ?? String(args.flags.dir ?? '.'), args.flags).catch((e) => { console.error(e instanceof Error ? e.message : e); process.exit(1); }); break;
   case 'worker': worker(args.flags); break;
+  case 'mcp': runMcp(args.rest[0] ?? String(args.flags.dir ?? '.')).catch((e) => { console.error(e instanceof Error ? e.message : e); process.exit(1); }); break;
   default:
-    console.log('ciurma: run a crew of Claude Code agents as a research lab\n\n  ciurma init [dir]                 create a studio (roles, token, database)\n  ciurma hub [dir] [--port N]       start the hub with the UI and a local worker\n  ciurma worker --hub URL --token T attach this machine to a hub\n');
+    console.log('ciurma: run a crew of Claude Code agents as a research lab\n\n  ciurma init [dir]                 create a studio (roles, token, database)\n  ciurma hub [dir] [--port N]       start the hub with the UI and a local worker\n  ciurma worker --hub URL --token T attach this machine to a hub\n  ciurma mcp [dir]                  stdio MCP server: drive the crew from a Claude Code session\n');
 }

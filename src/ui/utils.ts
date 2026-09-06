@@ -59,3 +59,17 @@ export function nextId(prefix: string): string {
   idCounter += 1;
   return `${prefix}-${Date.now().toString(36)}-${idCounter}`;
 }
+
+/** Resolves a member id to its display name; falls back to the id's first 8 characters
+ *  when the member is unknown (e.g. removed since the reference was written). */
+export function memberNameOrId(id: string, members: Array<{ id: string; name: string }>): string {
+  const m = members.find((x) => x.id === id);
+  return m ? m.name : id.slice(0, 8);
+}
+
+/** Resolves a Voce's `to` field (a member id, a role name, or 'all') for display: 'all' and
+ *  role names pass through unchanged, anything else is treated as a member id. */
+export function resolveAddressee(to: string, members: Array<{ id: string; name: string }>, roleNames: readonly string[]): string {
+  if (to === 'all' || roleNames.includes(to)) return to;
+  return memberNameOrId(to, members);
+}

@@ -152,6 +152,7 @@ class MockHub {
         members: this.members,
         voci: this.voci,
         rituals: this.rituals,
+        permissions: [],
       });
     }, 120);
     this.tickTimer = window.setInterval(() => this.simulateTick(), 3000);
@@ -325,7 +326,7 @@ class MockHub {
       const finished: Ritual = {
         ...ritual,
         status: 'done',
-        outcome: { refuted, holds, survives: refuted > holds ? 'refuted' : 'holds' },
+        outcome: { refuted, holds, undecidable: 0, pending: 0, survives: holds > refuted },
         finishedAt: new Date().toISOString(),
       };
       this.rituals = this.rituals.map((r) => (r.id === ritual.id ? finished : r));
@@ -624,7 +625,9 @@ function buildBoard(members: Member[], roles: Role[], machines: Machine[]): { vo
       outcome: {
         refuted: 2,
         holds: 1,
-        survives: 'refuted',
+        undecidable: 0,
+        pending: 0,
+        survives: false,
         detail: [
           { member: 'Lookout R1', verdict: 'refuted' },
           { member: 'Lookout R2', verdict: 'holds' },
