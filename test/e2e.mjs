@@ -42,7 +42,7 @@ try {
   const machine = snap.machines.find((m) => m.status === 'online');
   log('worker online:', machine.name, machine.claudeVersion);
 
-  const member = await api('POST', '/api/members', { roleId: 'deckhand', machineId: machine.id, name: 'E2E Deckhand', model: 'claude-haiku-4-5', effort: 'low', cwd: dir, brief: 'Write exactly one entry on the board with lavagna_scrivi: verb "fatto", text "e2e ready", to "all". Then reply with the single word done and stop. Do not do anything else.' });
+  const member = await api('POST', '/api/members', { roleId: 'deckhand', machineId: machine.id, name: 'E2E Deckhand', model: process.env.CIURMA_MODEL || 'claude-sonnet-5', effort: 'low', cwd: dir, brief: 'Write exactly one entry on the board with lavagna_scrivi: verb "fatto", text "e2e ready", to "all". Then reply with the single word done and stop. Do not do anything else.' });
   log('member started:', member.id);
 
   const voce = await until('the member writes fatto on the board', async () => { const s = await api('GET', '/api/snapshot'); return s.voci.find((v) => v.verb === 'fatto' && v.author.kind === 'member' && v.author.memberId === member.id) ?? null; }, 120000);

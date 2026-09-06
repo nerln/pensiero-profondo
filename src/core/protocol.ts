@@ -56,11 +56,11 @@ export type HubToUi =
   | { t: 'machine.updated'; machine: Machine }
   | { t: 'ritual.updated'; ritual: Ritual }
   | { t: 'studio.updated'; studio: Studio }
+  | { t: 'transcript.result'; memberId: string; items: TranscriptItem[]; reqId: string }
   | { t: 'error'; message: string };
 
 // ---------- UI -> hub ----------
 
 export type UiToHub =
   | { t: 'auth'; token: string }
-  | { t: 'transcript.get'; memberId: string; reqId: string }
-  | { t: 'transcript.result'; memberId: string; items: TranscriptItem[]; reqId: string };
+  | { t: 'transcript.get'; memberId: string; reqId: string };

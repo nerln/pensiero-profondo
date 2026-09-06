@@ -1,0 +1,91 @@
+import { useEffect, useReducer, useRef, useState } from 'react';
+import { initialState, reduce } from './state.js';
+import { connectWs } from './ws.js';
+import { isMockMode } from './mock.js';
+import { Footer } from './components/Footer.js';
+import { CrewView } from './components/CrewView.js';
+import { MemberView } from './components/MemberView.js';
+import { BoardView } from './components/BoardView.js';
+import { RitualsView } from './components/RitualsView.js';
+import { MachinesView } from './components/MachinesView.js';
+
+type View = 'crew' | 'board' | 'rituals' | 'machines';
+
+const NAV_ITEMS: Array<{ id: View; label: string }> = [
+  { id: 'crew', label: 'Crew' },
+  { id: 'board', label: 'Board' },
+  { id: 'rituals', label: 'Rituals' },
+  { id: 'machines', label: 'Machines' },
+];
+
+export function App(): JSX.Element {
+  const [state, dispatch] = useReducer(reduce, initialState);
+  const [view, setView] = useState<View>('crew');
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+  const wsRef = useRef<ReturnType<typeof connectWs> | null>(null);
+
+  useEffect(() => {
+    const handle = connectWs(dispatch);
+    wsRef.current = handle;
+    return () => {
+      handle.close();
+      wsRef.current = null;
+    };
+    // connectWs and dispatch are both stable for the lifetime of the app
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function openMember(id: string): void {
+    setSelectedMemberId(id);
+  }
+
+  function backToCrew(): void {
+    setSelectedMemberId(null);
+    setView('crew');
+  }
+
+  const showingMember = selectedMemberId !== null;
+
+  return (
+    <div className="app">
+      <nav className="rail">
+        <div className="rail-brand">
+          <span className={`rail-conn${state.connected ? ' on' : ''}`} title={state.connected ? 'connected' : 'disconnected'} />
+          <span className="rail-brand-name">ciurma</span>
+        </div>
+        {NAV_ITEMS.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            className={`rail-nav-btn${view === item.id && !showingMember ? ' active' : ''}`}
+            onClick={() => {
+              setSelectedMemberId(null);
+              setView(item.id);
+            }}
+          >
+            {item.label}
+          </button>
+        ))}
+        <div className="rail-spacer" />
+        {isMockMode() && <div className="rail-mock">mock mode</div>}
+      </nav>
+      <div className="main">
+        <div className="view">
+          {state.lastError && <div className="error-banner">{state.lastError}</div>}
+          {showingMember && selectedMemberId ? (
+            <MemberView state={state} dispatch={dispatch} memberId={selectedMemberId} onBack={backToCrew} />
+          ) : view === 'crew' ? (
+            <CrewView state={state} onOpenMember={openMember} />
+          ) : view === 'board' ? (
+            <BoardView state={state} onOpenMember={openMember} />
+          ) : view === 'rituals' ? (
+            <RitualsView state={state} />
+          ) : (
+            <MachinesView state={state} />
+          )}
+        </div>
+        <Footer />
+      </div>
+    </div>
+  );
+}

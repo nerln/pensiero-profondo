@@ -15,7 +15,7 @@ export function attackBrief(claim: Voce, ritualId: string): string {
     '',
     'Go to the source. Do not evaluate the summary above; open the files and run the commands yourself.',
     `When you are done, post exactly one entry with the lavagna_scrivi tool: verb "attacco", replyTo "${claim.id}", to "all",`,
-    'meta {"verdict": "refuted" | "holds" | "undecidable"}, and a text that gives the evidence with file and line and the one check the claimant should run next.',
+    'meta as the JSON string {"verdict": "refuted"} (or "holds", or "undecidable"), and a text that gives the evidence with file and line and the one check the claimant should run next.',
     'If you cannot decide, the verdict is "refuted". Then stop.',
   ].join('\n');
 }

@@ -15,5 +15,5 @@
     "forceConsistentCasingInFileNames": true,
     "types": ["vite/client"]
   },
-  "include": ["**/*.ts", "**/*.tsx", "../core/**/*.ts"]
+  "include": ["**/*.ts", "**/*.tsx", "../core/types.ts", "../core/protocol.ts"]
 }

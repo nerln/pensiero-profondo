@@ -69,8 +69,9 @@ function zeroUsage(): Usage {
   return { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0, costUsd: 0, turns: 0 };
 }
 
-function memberAuthor(m: Member, role: Role): Author {
-  return { kind: 'member', memberId: m.id, memberName: m.name, role: role.label, machine: m.machineId };
+function memberAuthor(m: Member, role: Role, machines: Machine[]): Author {
+  const machine = machines.find((x) => x.id === m.machineId);
+  return { kind: 'member', memberId: m.id, memberName: m.name, role: role.label, machine: machine?.name ?? m.machineId };
 }
 
 class MockHub {
@@ -90,7 +91,7 @@ class MockHub {
     this.roles = buildRoles();
     this.machines = buildMachines();
     this.members = buildMembers(this.roles, this.machines);
-    const { voci, rituals } = buildBoard(this.members, this.roles);
+    const { voci, rituals } = buildBoard(this.members, this.roles, this.machines);
     this.voci = voci;
     this.rituals = rituals;
     this.transcripts = buildTranscripts(this.members);
@@ -311,7 +312,7 @@ class MockHub {
             verdict === 'refuted'
               ? 'Reran with the same command; the figure does not reproduce cold. Evidence attached below.'
               : 'Reproduced independently with the same command and inputs. The number holds.',
-          author: { kind: 'member', memberId: mid, memberName: `Lookout R${i + 1}`, role: 'Lookout', machine: this.machines[0]?.id ?? 'machine-laptop' },
+          author: { kind: 'member', memberId: mid, memberName: `Lookout R${i + 1}`, role: 'Lookout', machine: this.machines[0]?.name ?? 'laptop' },
           to: target?.author.kind === 'member' ? target.author.memberId : 'all',
           replyTo: input.voceId,
           meta: { verdict },
@@ -395,7 +396,7 @@ class MockHub {
         studioId: STUDIO_ID,
         verb: tmpl.verb,
         text: tmpl.text,
-        author: worker ? memberAuthor(worker, this.roles.find((r) => r.id === worker.roleId)!) : { kind: 'hub' },
+        author: worker ? memberAuthor(worker, this.roles.find((r) => r.id === worker.roleId)!, this.machines) : { kind: 'hub' },
         to: 'all',
         replyTo: null,
         meta: {},
@@ -514,7 +515,7 @@ function buildMembers(roles: Role[], machines: Machine[]): Member[] {
   ];
 }
 
-function buildBoard(members: Member[], roles: Role[]): { voci: Voce[]; rituals: Ritual[] } {
+function buildBoard(members: Member[], roles: Role[], machines: Machine[]): { voci: Voce[]; rituals: Ritual[] } {
   const captain = members[0];
   const lookout1 = members[1];
   const deckhand = members[2];
@@ -539,7 +540,7 @@ function buildBoard(members: Member[], roles: Role[]): { voci: Voce[]; rituals: 
     text:
       'Direction for the next 24h: benchmark the patched decoder against main on corpus/small, five runs each, ' +
       'cold and warm cache. Gate: throughput regression under 5% fails the patch.',
-    author: memberAuthor(captain, roleOf(captain)),
+    author: memberAuthor(captain, roleOf(captain), machines),
     to: 'all',
     replyTo: null,
     meta: {},
@@ -548,7 +549,7 @@ function buildBoard(members: Member[], roles: Role[]): { voci: Voce[]; rituals: 
   push({
     verb: 'preso',
     text: 'Taking: benchmark decoder throughput on corpus/small with hyperfine, patched vs main.',
-    author: memberAuthor(deckhand, roleOf(deckhand)),
+    author: memberAuthor(deckhand, roleOf(deckhand), machines),
     to: 'all',
     replyTo: null,
     meta: {},
@@ -560,7 +561,7 @@ function buildBoard(members: Member[], roles: Role[]): { voci: Voce[]; rituals: 
     studioId: STUDIO_ID,
     verb: 'numero',
     text: 'Patched decoder: 128.4 req/s on corpus/small (n=20), hyperfine --warmup 5 --min-runs 20.',
-    author: memberAuthor(deckhand, roleOf(deckhand)),
+    author: memberAuthor(deckhand, roleOf(deckhand), machines),
     to: 'all',
     replyTo: null,
     meta: { value: 128.4, unit: 'req/s', source: 'bench/run.py:42' },
@@ -569,7 +570,7 @@ function buildBoard(members: Member[], roles: Role[]): { voci: Voce[]; rituals: 
   push({
     verb: 'fatto',
     text: 'Benchmark done. bench/run.py holds the script; raw hyperfine output in bench/out/patched.json.',
-    author: memberAuthor(deckhand, roleOf(deckhand)),
+    author: memberAuthor(deckhand, roleOf(deckhand), machines),
     to: 'all',
     replyTo: null,
     meta: {},
@@ -605,7 +606,7 @@ function buildBoard(members: Member[], roles: Role[]): { voci: Voce[]; rituals: 
     push({
       verb: 'attacco',
       text: a.text,
-      author: { kind: 'member', memberId: ritualMemberIds[i], memberName: `Lookout R${i + 1}`, role: 'Lookout', machine: 'machine-laptop' },
+      author: { kind: 'member', memberId: ritualMemberIds[i], memberName: `Lookout R${i + 1}`, role: 'Lookout', machine: machines[0]?.name ?? 'laptop' },
       to: deckhand.id,
       replyTo: numero1Id,
       meta: { verdict: a.verdict },
@@ -640,7 +641,7 @@ function buildBoard(members: Member[], roles: Role[]): { voci: Voce[]; rituals: 
     text:
       "Retracting the 128.4 figure. The lookouts caught it: the patched run's corpus was cached from a prior warm-up pass, " +
       'main was not. Rerunning both with a cold cache.',
-    author: memberAuthor(deckhand, roleOf(deckhand)),
+    author: memberAuthor(deckhand, roleOf(deckhand), machines),
     to: 'all',
     replyTo: numero1Id,
     meta: {},
@@ -649,7 +650,7 @@ function buildBoard(members: Member[], roles: Role[]): { voci: Voce[]; rituals: 
   push({
     verb: 'preso',
     text: 'Taking: rerun both decoders with a cold cache, five trials each.',
-    author: memberAuthor(deckhand, roleOf(deckhand)),
+    author: memberAuthor(deckhand, roleOf(deckhand), machines),
     to: 'all',
     replyTo: null,
     meta: {},
@@ -658,7 +659,7 @@ function buildBoard(members: Member[], roles: Role[]): { voci: Voce[]; rituals: 
   push({
     verb: 'numero',
     text: 'Patched decoder, cold cache: 94.2 req/s. Main, same conditions: 92.7 req/s. Within 2%, not a regression.',
-    author: memberAuthor(deckhand, roleOf(deckhand)),
+    author: memberAuthor(deckhand, roleOf(deckhand), machines),
     to: 'all',
     replyTo: null,
     meta: { value: 94.2, unit: 'req/s', source: 'bench/run.py:58' },
@@ -667,7 +668,7 @@ function buildBoard(members: Member[], roles: Role[]): { voci: Voce[]; rituals: 
   push({
     verb: 'fatto',
     text: 'Cold-cache benchmark done. Scripts and raw output in bench/out/cold.json.',
-    author: memberAuthor(deckhand, roleOf(deckhand)),
+    author: memberAuthor(deckhand, roleOf(deckhand), machines),
     to: 'all',
     replyTo: null,
     meta: {},
@@ -676,7 +677,7 @@ function buildBoard(members: Member[], roles: Role[]): { voci: Voce[]; rituals: 
   push({
     verb: 'messaggio',
     text: 'Good catch from the lookouts. Direction unchanged: no throughput regression, ship the patch. Gate closed.',
-    author: memberAuthor(captain, roleOf(captain)),
+    author: memberAuthor(captain, roleOf(captain), machines),
     to: 'all',
     replyTo: null,
     meta: {},
@@ -699,7 +700,7 @@ function buildBoard(members: Member[], roles: Role[]): { voci: Voce[]; rituals: 
   push({
     verb: 'consenso',
     text: 'Yes — this matches what is on disk.',
-    author: memberAuthor(deckhand, roleOf(deckhand)),
+    author: memberAuthor(deckhand, roleOf(deckhand), machines),
     to: 'owner',
     replyTo: proposalId,
     meta: { value: 'yes' },
@@ -708,7 +709,7 @@ function buildBoard(members: Member[], roles: Role[]): { voci: Voce[]; rituals: 
   push({
     verb: 'consenso',
     text: 'Yes. I re-ran the cold-cache numbers myself; they hold.',
-    author: memberAuthor(lookout1, roleOf(lookout1)),
+    author: memberAuthor(lookout1, roleOf(lookout1), machines),
     to: 'owner',
     replyTo: proposalId,
     meta: { value: 'yes' },

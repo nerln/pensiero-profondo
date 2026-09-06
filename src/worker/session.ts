@@ -106,6 +106,8 @@ export function startSession(spec: SessionStartSpec, handlers: SessionHandlers, 
 
   const mcpServer = createSdkMcpServer({
     name: 'ciurma',
+    // Not deferred: the model must see both tools in its list without searching for them.
+    alwaysLoad: true,
     tools: [
       tool(
         'lavagna_scrivi',
@@ -115,15 +117,26 @@ export function startSession(spec: SessionStartSpec, handlers: SessionHandlers, 
           text: z.string().describe('The entry text.'),
           to: z.string().default('all').describe("Addressee: a member id, a role name, or 'all'."),
           replyTo: z.string().optional().describe('Id of the entry this one answers, e.g. an attacco pointing at a numero.'),
-          meta: z.record(z.string(), z.unknown()).optional().describe('Free structured payload, e.g. { value, unit, source } for numero.'),
+          // A JSON object as a string: the SDK cannot turn a zod record into a tool schema, and a string always can.
+          meta: z.string().optional().describe('Optional JSON object as a string, e.g. {"value": 42.8, "unit": "%", "source": "file:line"} for numero, {"verdict": "refuted"} for attacco.'),
         },
         async (args) => {
+          let meta: Record<string, unknown> = {};
+          if (args.meta) {
+            try {
+              const parsed: unknown = JSON.parse(args.meta);
+              if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('not an object');
+              meta = parsed as Record<string, unknown>;
+            } catch (e) {
+              return { content: [{ type: 'text', text: JSON.stringify({ ok: false, error: `meta is not a JSON object: ${String(e)}` }) }] };
+            }
+          }
           const result = await handlers.lavagnaScrivi({
             verb: args.verb,
             text: args.text,
             to: args.to,
             replyTo: args.replyTo ?? null,
-            meta: args.meta ?? {},
+            meta,
           });
           return { content: [{ type: 'text', text: JSON.stringify(result) }] };
         },
@@ -158,8 +171,12 @@ export function startSession(spec: SessionStartSpec, handlers: SessionHandlers, 
     includePartialMessages: false,
     abortController,
     mcpServers: { ciurma: mcpServer },
+    // Only the ciurma server: a crew session must not inherit the owner's MCP servers or connectors.
+    strictMcpConfig: true,
+    // Project settings (CLAUDE.md, project MCP) yes; the owner's user-level settings no.
+    settingSources: ['project'],
     canUseTool,
-    ...(spec.role.tools !== undefined ? { allowedTools: spec.role.tools } : {}),
+    allowedTools: [...(spec.role.tools ?? []), 'mcp__ciurma__lavagna_scrivi', 'mcp__ciurma__lavagna_leggi'],
     ...(spec.permissionMode === 'bypassPermissions' ? { allowDangerouslySkipPermissions: true } : {}),
   };
 
@@ -173,7 +190,7 @@ export function startSession(spec: SessionStartSpec, handlers: SessionHandlers, 
         const ts = new Date().toISOString();
         if (message.type === 'system' && message.subtype === 'init') {
           sessionId = message.session_id;
-          handlers.onItem({ kind: 'system', text: `session started: model ${message.model}, claude code ${message.claude_code_version}`, ts });
+          handlers.onItem({ kind: 'system', text: `session started: model ${message.model}, claude code ${message.claude_code_version}, mcp ${message.mcp_servers.map((m) => `${m.name}=${m.status}`).join(' ') || 'none'}, tools ${message.tools.length} (${message.tools.filter((t) => t.startsWith('mcp__')).join(' ') || 'no mcp tools'})`, ts });
           handlers.onStatus('idle', { sessionId });
         } else if (message.type === 'assistant') {
           handlers.onStatus('working');
