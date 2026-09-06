@@ -145,19 +145,18 @@ export function startSession(spec: SessionStartSpec, handlers: SessionHandlers, 
       tool(
         'lavagna_leggi',
         LAVAGNA_LEGGI_DESCRIPTION,
-        {
-          since: z.string().optional().describe('Entry id to read new entries after; omit for everything pending.'),
-        },
-        async (args) => {
-          const text = await handlers.lavagnaLeggi(args.since);
+        {},
+        async () => {
+          const text = await handlers.lavagnaLeggi();
           return { content: [{ type: 'text', text }] };
         },
       ),
     ],
   });
 
-  // No UI approval flow yet: bypassPermissions never calls this at all, and every other mode
-  // gets a plain allow. Denying anything here would just hang the session with no one to ask.
+  // No UI approval flow yet, so a tool that would prompt is allowed here. That means a role
+  // without a `tools` list runs with every tool. Roles that must stay narrow list their tools
+  // (see src/roles) or use dontAsk, which denies instead of prompting.
   const canUseTool: CanUseTool = async (_toolName, input) => ({ behavior: 'allow', updatedInput: input });
 
   const abortController = new AbortController();
@@ -174,10 +173,13 @@ export function startSession(spec: SessionStartSpec, handlers: SessionHandlers, 
     mcpServers: { ciurma: mcpServer },
     // Only the ciurma server: a crew session must not inherit the owner's MCP servers or connectors.
     strictMcpConfig: true,
-    // Project settings (CLAUDE.md, project MCP) yes; the owner's user-level settings no.
+    // Project settings (CLAUDE.md, project hooks) yes; the owner's user-level settings no.
+    // Project .mcp.json is ignored too because of strictMcpConfig above.
     settingSources: ['project'],
     canUseTool,
     allowedTools: [...(spec.role.tools ?? []), 'mcp__ciurma__lavagna_scrivi', 'mcp__ciurma__lavagna_leggi'],
+    // `tools` restricts the built-in set; the ciurma MCP server is configured separately and unaffected.
+    ...(spec.role.tools !== undefined ? { tools: spec.role.tools } : {}),
     ...(spec.permissionMode === 'bypassPermissions' ? { allowDangerouslySkipPermissions: true } : {}),
   };
 

@@ -7,6 +7,8 @@
 import { VERBS, type Author, type Verb, type Voce } from './types.js';
 
 export const MAX_TEXT = 700;
+export const MAX_TO = 120;
+export const MAX_META = 4000;
 export const CAP_DELIVERY = 12;
 
 const VERB_SET = new Set<string>(VERBS);
@@ -38,11 +40,17 @@ export function validateVoce(input: ValidateVoceInput): ValidateVoceResult {
   const truncated = text.length > MAX_TEXT ? text.slice(0, MAX_TEXT) : text;
 
   const to = input.to.trim().length > 0 ? input.to.trim() : 'all';
+  if (to.length > MAX_TO || /[\u0000-\u001f\u007f]/.test(to)) {
+    return { ok: false, error: `'to' must be one line of at most ${MAX_TO} characters` };
+  }
 
   let meta: Record<string, unknown> = {};
   if (input.meta !== undefined) {
     if (!isPlainObject(input.meta)) {
       return { ok: false, error: 'meta must be a plain object' };
+    }
+    if (JSON.stringify(input.meta).length > MAX_META) {
+      return { ok: false, error: `meta must serialise to at most ${MAX_META} characters` };
     }
     meta = input.meta;
   }

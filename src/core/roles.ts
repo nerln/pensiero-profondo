@@ -110,7 +110,7 @@ export function parseRoleFile(name: string, content: string): Role {
 
 // Two levels up from src/core (or dist/core) always lands on the project root, so this
 // resolves to src/roles whether the module is running from source (tsx) or from dist (node).
-const DEFAULT_ROLES_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'src', 'roles');
+export const DEFAULT_ROLES_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'src', 'roles');
 
 export function loadDefaultRoles(dir?: string): Role[] {
   const rolesDir = dir ?? DEFAULT_ROLES_DIR;

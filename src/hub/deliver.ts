@@ -5,6 +5,7 @@
 import type { Db } from './db.js';
 import type { Member, Role, Voce } from '../core/types.js';
 import { cornice } from '../core/lavagna.js';
+import { coMembers } from './rituals.js';
 
 export function pendingFor(db: Db, member: Member, role: Role): Voce[] {
   const mark = db.bookmarks.get(member.id);
@@ -16,7 +17,8 @@ export function pendingFor(db: Db, member: Member, role: Role): Voce[] {
     const i = all.findIndex((v) => v.id === mark.voceId);
     if (i >= 0) all = all.slice(i + 1);
   }
-  return all.filter((v) => addressedTo(v, member, role));
+  const isolated = coMembers(db, member.id);
+  return all.filter((v) => addressedTo(v, member, role) && !(v.author.kind === 'member' && isolated.has(v.author.memberId)));
 }
 
 export function addressedTo(v: Voce, member: Member, role: Role): boolean {
@@ -44,8 +46,10 @@ export class Deliverer {
 
   /** Called after every new entry. Schedules a delivery for each member it reaches. */
   onVoce(v: Voce): void {
+    const isolated = v.author.kind === 'member' ? coMembers(this.db, v.author.memberId) : new Set<string>();
     for (const m of this.db.members.list()) {
       if (m.status === 'stopped' || m.status === 'error' || m.status === 'starting') continue;
+      if (isolated.has(m.id)) continue;
       const role = this.db.roles.get(m.roleId);
       if (!role || !addressedTo(v, m, role)) continue;
       this.schedule(m.id);

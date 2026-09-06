@@ -118,8 +118,12 @@ session are delivered into it as framed user messages, the frame being the same 
 provenance line, margin `| ` on every quoted line, the list of actions that are never taken
 because an entry asked for them, and a closing line the test guarantees appears once.
 
-Authentication: the hub binds to localhost. Remote workers and non-local UI clients present a
-token generated at `ciurma init`. Nothing else.
+Authentication: the hub binds to localhost, and every API call and UI socket presents the token
+generated at `ciurma init`, loopback included, because a web page open on the owner's machine is
+loopback too. The page served on loopback carries the token; another origin cannot read it (no
+CORS headers are ever sent) and cannot send the header without a preflight the hub does not
+answer. Worker sockets present the token in their first message and are refused if they carry
+a browser `Origin`. A worker may only act for members on its own machine. Nothing else.
 
 Budget: every result message carries usage; the hub sums per member, role, and studio, and the
 studio cap is a hard stop that sends `interrupt()` to every session, then posts an `avviso`.

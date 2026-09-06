@@ -4,6 +4,7 @@
 // socket, so the rest of the app never has to know which mode it is running in.
 
 import type { HubToUi, UiToHub } from '../core/protocol.js';
+import { hubToken } from './api';
 import type { UiAction } from './state.js';
 import { isMockMode, mockHub } from './mock.js';
 
@@ -25,7 +26,7 @@ export function connectWs(dispatch: (action: UiAction) => void): WsHandle {
   let backoffMs = INITIAL_BACKOFF_MS;
   let reconnectTimer: number | undefined;
 
-  const token = new URLSearchParams(window.location.search).get('token');
+  const token = hubToken();
 
   function send(msg: UiToHub): void {
     if (socket && socket.readyState === WebSocket.OPEN) {
@@ -44,7 +45,7 @@ export function connectWs(dispatch: (action: UiAction) => void): WsHandle {
   function open(): void {
     if (closed) return;
     const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    socket = new WebSocket(`${proto}//${window.location.host}/ws/ui`);
+    socket = new WebSocket(`${proto}//${window.location.host}/ws/ui?token=${encodeURIComponent(token)}`);
 
     socket.addEventListener('open', () => {
       backoffMs = INITIAL_BACKOFF_MS;

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // ciurma init [dir] | ciurma hub [--port N] [--host H] [--dir D] [--no-worker] | ciurma worker --hub URL --token T [--name N]
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync, copyFileSync } from 'node:fs';
 import { join, resolve, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { hostname } from 'node:os';
@@ -9,7 +9,7 @@ import { randomBytes } from 'node:crypto';
 import { openDb } from './hub/db.js';
 import { startHub } from './hub/server.js';
 import { runWorker } from './worker/client.js';
-import { loadDefaultRoles } from './core/roles.js';
+import { loadDefaultRoles, DEFAULT_ROLES_DIR } from './core/roles.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -34,6 +34,7 @@ interface Config { token: string; port: number; host: string }
 
 function configPath(dir: string): string { return join(dir, '.ciurma', 'config.json'); }
 function dbPath(dir: string): string { return join(dir, '.ciurma', 'studio.db'); }
+function rolesDir(dir: string): string { return join(dir, '.ciurma', 'roles'); }
 
 function readConfig(dir: string): Config {
   const p = configPath(dir);
@@ -48,11 +49,13 @@ function init(dir: string, flags: Args['flags']): void {
   mkdirSync(dirname(p), { recursive: true });
   const config: Config = { token: randomBytes(24).toString('hex'), port: Number(flags.port ?? 4177), host: String(flags.host ?? '127.0.0.1') };
   writeFileSync(p, JSON.stringify(config, null, 2) + '\n');
+  mkdirSync(rolesDir(root), { recursive: true });
+  for (const f of readdirSync(DEFAULT_ROLES_DIR)) if (f.endsWith('.md')) copyFileSync(join(DEFAULT_ROLES_DIR, f), join(rolesDir(root), f));
   const db = openDb(dbPath(root));
   db.studio.create({ name: String(flags.name ?? basename(root)), goal: String(flags.goal ?? ''), roots: [root], budgetUsd: null });
-  for (const r of loadDefaultRoles()) db.roles.upsert(r);
+  for (const r of loadDefaultRoles(rolesDir(root))) db.roles.upsert(r);
   db.close();
-  console.log(`studio created in ${dirname(p)}`);
+  console.log(`studio created in ${dirname(p)}; the role mandates are in ${rolesDir(root)}, edit them and restart the hub`);
   console.log(`token for remote workers and non-local browsers: ${config.token}`);
   console.log('next: ciurma hub');
 }
@@ -63,7 +66,8 @@ async function hub(dir: string, flags: Args['flags']): Promise<void> {
   const port = Number(flags.port ?? config.port);
   const host = String(flags.host ?? config.host);
   const db = openDb(dbPath(root));
-  for (const r of loadDefaultRoles()) if (!db.roles.get(r.id)) db.roles.upsert(r);
+  // The mandates in .ciurma/roles are the product: re-read on every start so edits take effect.
+  for (const r of loadDefaultRoles(existsSync(rolesDir(root)) ? rolesDir(root) : undefined)) db.roles.upsert(r);
   const uiDir = [join(HERE, 'ui'), join(HERE, '..', 'dist', 'ui')].find((d) => existsSync(join(d, 'index.html'))) ?? null;
   const h = await startHub({ db, port, host, token: config.token, uiDir });
   console.log(`ciurma hub at ${h.url}${uiDir ? '' : '  (UI not built)'}`);

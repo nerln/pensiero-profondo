@@ -63,3 +63,24 @@ describe('delivery', () => {
     vi.useRealTimers();
   });
 });
+
+describe('delivery, after review', () => {
+  it('does not deliver a lookout verdict to the other lookouts of the same running ritual', async () => {
+    vi.useFakeTimers();
+    const { db, mk, post } = seed();
+    const l1 = mk('Lookout 1', 'lookout');
+    const l2 = mk('Lookout 2', 'lookout');
+    const d = mk('Deckhand 1', 'deckhand');
+    const studio = db.studio.get()!;
+    db.rituals.create({ studioId: studio.id, kind: 'attack', targetVoceId: null, memberIds: [l1.id, l2.id] });
+    const sent: string[] = [];
+    const del = new Deliverer(db, (m) => sent.push(m.name), 50);
+    del.onVoce(post({ kind: 'member', memberId: l1.id, memberName: l1.name, role: 'lookout', machine: 'local' }, 'all', 'my verdict'));
+    await vi.advanceTimersByTimeAsync(100);
+    expect(sent.sort()).toEqual(['Deckhand 1']);
+    expect(pendingFor(db, l2, db.roles.get('lookout')!)).toHaveLength(0);
+    expect(pendingFor(db, d, db.roles.get('deckhand')!)).toHaveLength(0); // already taken by the deliverer
+    del.close();
+    vi.useRealTimers();
+  });
+});

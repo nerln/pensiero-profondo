@@ -257,8 +257,8 @@ describe('startSession', () => {
     expect(scriviResult.content[0]).toEqual({ type: 'text', text: JSON.stringify({ ok: true, voceId: 'v1' }) });
 
     const leggi = serverOptions.tools[1];
-    const leggiResult = await leggi.handler({ since: 'v0' }, {});
-    expect(handlers.lavagnaLeggi).toHaveBeenCalledWith('v0');
+    const leggiResult = await leggi.handler({}, {});
+    expect(handlers.lavagnaLeggi).toHaveBeenCalledTimes(1);
     expect(leggiResult.content[0]).toEqual({ type: 'text', text: 'nothing new' });
   });
 

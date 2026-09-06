@@ -32,7 +32,8 @@ export interface Role {
   mandate: string;
   model: string;
   effort: EffortLevel;
-  /** Tool names the session may use; undefined means the Claude Code default set. */
+  /** Tools pre-approved for the session. Undefined means the Claude Code default set, with prompts
+   *  decided by permissionMode (allowed while there is no approval flow, denied under dontAsk). */
   tools?: string[];
   permissionMode: PermissionMode;
   /** Whether this role may post `proposta` entries (outward actions). */

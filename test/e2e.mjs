@@ -14,8 +14,9 @@ const fail = (m) => { console.error('[e2e] FAIL:', m); cleanup(); process.exit(1
 let hub;
 function cleanup() { try { hub?.kill('SIGTERM'); } catch {} try { rmSync(dir, { recursive: true, force: true }); } catch {} }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+let TOKEN = '';
 const api = async (method, path, body) => {
-  const r = await fetch(`http://127.0.0.1:${PORT}${path}`, { method, headers: { 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+  const r = await fetch(`http://127.0.0.1:${PORT}${path}`, { method, headers: { 'content-type': 'application/json', 'x-ciurma-token': TOKEN }, body: body ? JSON.stringify(body) : undefined });
   const j = await r.json();
   if (!r.ok) throw new Error(`${method} ${path} -> ${r.status} ${JSON.stringify(j)}`);
   return j;
@@ -31,6 +32,7 @@ try {
   await new Promise((r) => init.on('exit', r));
   const cfg = JSON.parse(readFileSync(join(dir, '.ciurma', 'config.json'), 'utf8'));
   if (!cfg.token) fail('init produced no token');
+  TOKEN = cfg.token;
   log('init ok, port', PORT);
 
   hub = spawn('node', [CLI, 'hub', dir], { stdio: ['ignore', 'pipe', 'pipe'] });

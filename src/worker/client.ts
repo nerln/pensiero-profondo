@@ -120,16 +120,16 @@ export function runWorker(opts: {
         sessions.get(msg.memberId)?.send(msg.text);
         return;
       case 'session.interrupt':
-        void sessions.get(msg.memberId)?.interrupt();
+        sessions.get(msg.memberId)?.interrupt().catch((e) => log(`interrupt failed: ${String(e)}`));
         return;
       case 'session.stop': {
         const handle = sessions.get(msg.memberId);
         sessions.delete(msg.memberId);
-        void handle?.stop();
+        handle?.stop().catch((e) => log(`stop failed: ${String(e)}`));
         return;
       }
       case 'session.setModel':
-        void sessions.get(msg.memberId)?.setModel(msg.model);
+        sessions.get(msg.memberId)?.setModel(msg.model).catch((e) => log(`setModel failed: ${String(e)}`));
         return;
       case 'lavagna.scrivi.result':
       case 'lavagna.leggi.result': {
