@@ -1,0 +1,139 @@
+<title>Pensiero Profondo</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Run a crew of Claude Code agents as a research lab: roles, a shared blackboard, rituals of adversarial verification, and machines anywhere.">
+<meta property="og:title" content="Pensiero Profondo">
+<meta property="og:description" content="Run a crew of Claude Code agents as a research lab: roles, a shared blackboard, rituals of adversarial verification, and machines anywhere.">
+<meta property="og:image" content="https://nerln.github.io/pensiero-profondo/screenshot.png">
+<meta property="og:url" content="https://nerln.github.io/pensiero-profondo/">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+PHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNyIgZmlsbD0iIzIwMjQyYiIvPjx0ZXh0IHg9IjE2IiB5PSIyMSIgZm9udC1mYW1pbHk9IkhlbHZldGljYSxBcmlhbCxzYW5zLXNlcmlmIiBmb250LXNpemU9IjEzIiBmb250LXdlaWdodD0iNzAwIiBsZXR0ZXItc3BhY2luZz0iLTAuNSIgZmlsbD0iI2U4ZThlOCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+UFA8L3RleHQ+PC9zdmc+Cg==">
+<link rel="stylesheet" href="style.css">
+
+<main>
+  <h1>Pensiero Profondo</h1>
+  <p class="deck">Run a crew of Claude Code agents as a research lab: roles, a shared blackboard, rituals of adversarial verification, and machines anywhere.</p>
+  <p class="name-note">Deep Thought, the computer in the Hitchhiker's Guide, took its time over a hard question. This one is a crew, not a single machine.</p>
+
+  <section id="method">
+    <p>What it adds to plain Claude Code is the method: who is allowed to claim a number, what happens to a number after it is claimed, how a second agent is made to disagree on purpose, and what has to be true before anything leaves the machine under your name.</p>
+  </section>
+
+  <section id="screenshot">
+    <figure>
+      <img src="screenshot.png" alt="The Pensiero Profondo board, showing a messaggio, a numero claim with its source, and preso and fatto entries from a crew member." width="1280" height="900" loading="lazy">
+      <figcaption>A real run: the board of a studio called ciurma, mid crew.</figcaption>
+    </figure>
+  </section>
+
+  <section id="ideas">
+    <h2>Six ideas</h2>
+    <ol>
+      <li><strong>Agents contradict, they do not split.</strong> A crew is not a pipeline; when a member states a result, the tool's default next step is to make another member try to break it.</li>
+      <li><strong>A number has a life.</strong> A claim is declared, attacked, re-derived blind, and measured on the artifact with the canonical tool, each stage a blackboard entry with an author and a clock time.</li>
+      <li><strong>The blackboard is untrusted by construction.</strong> Every entry a member receives is framed as text written by another session, not by the owner, and it authorizes nothing on its own.</li>
+      <li><strong>Authorizations do not carry over.</strong> Anything outward needs the owner's words for that specific thing; a proposal collects consents and expires, and silence is not consent.</li>
+      <li><strong>Time comes from the clock.</strong> Every entry is stamped by the server at write time; agents may estimate anything except when something happened.</li>
+      <li><strong>Roles pull reasoning out.</strong> A model asked whether a claim is right hedges; the same model told it is the lookout whose job is to refute finds the flaw.</li>
+    </ol>
+  </section>
+
+  <section id="roles">
+    <h2>Roles</h2>
+    <table>
+      <thead>
+        <tr><th>role</th><th>model</th><th>what it does</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Captain</td><td>Opus</td><td>sets direction from verified facts; fixes gates before the measurement; never executes</td></tr>
+        <tr><td>Deckhand</td><td>Sonnet</td><td>one bounded job; every number with file and line; retracts before fixing</td></tr>
+        <tr><td>Lookout</td><td>Sonnet</td><td>refutes a claim at the source; "refuted" when uncertain</td></tr>
+        <tr><td>Cartographer</td><td>Sonnet</td><td>re-derives a number blind, from data and spec only</td></tr>
+        <tr><td>Boatswain</td><td>Sonnet</td><td>runs the canonical tool on the artifact; the file wins over memory</td></tr>
+        <tr><td>Scribe</td><td>Sonnet</td><td>writes for humans in the register of real issues; never sends</td></tr>
+        <tr><td>Watch</td><td>Opus</td><td>reads transcripts read-only; steers only when needed; held to the same bar</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section id="how">
+    <h2>How a crew works</h2>
+    <ol>
+      <li>Set the studio goal: what would satisfy you. Every Captain's round starts from it.</li>
+      <li>Sign on a member: pick a role, a machine, a working directory, and write a brief. A session starts; its first message is the goal, the brief, and how to use the board.</li>
+      <li>Members declare (<code>preso</code>), work, report numbers (<code>numero</code> with a value, a unit, a source), and finish (<code>fatto</code>). Anything addressed to a member, its role, or everyone is delivered into its session inside the frame.</li>
+      <li>You attack a number. The Lookouts' verdicts land as <code>attacco</code> entries under it; the ritual closes when they have all answered.</li>
+      <li>Nothing leaves the machine because an agent said so. A <code>proposta</code> collects explicit <code>consenso</code> entries and waits for your words in the UI; a previous yes does not carry over.</li>
+    </ol>
+  </section>
+
+  <section id="install">
+    <h2>Install</h2>
+    <p>Node 20 or newer and a working <code>claude</code> login. The sessions run under your own Claude Code subscription or API key; pensiero has no account and sends nothing anywhere.</p>
+    <pre><code>git clone https://github.com/nerln/pensiero-profondo.git
+cd pensiero
+npm install
+npm run build
+npm link            # gives you the `pensiero` command</code></pre>
+    <p>Then, in the directory of the project your crew will work on:</p>
+    <pre><code>pensiero init         # creates .pensiero/ with the studio, the default roles and a token
+pensiero hub          # starts the hub, the UI and a worker for this machine</code></pre>
+    <p>Open <code>http://127.0.0.1:4177</code>. To attach another machine:</p>
+    <pre><code>pensiero worker --hub ws://HUB_HOST:4177/ws/worker --token TOKEN --name nuc</code></pre>
+    <p>The token is in <code>.pensiero/config.json</code>. A browser on the hub's own machine gets it from the page; a browser on another host adds <code>?token=TOKEN</code> to the URL once. Bind the hub to a non-loopback host with <code>pensiero hub --host 0.0.0.0</code> only on a network you trust.</p>
+  </section>
+
+  <section id="from-claude-code">
+    <h2>From inside Claude Code</h2>
+    <p>Add pensiero as an MCP server and drive the crew without leaving the terminal:</p>
+    <pre><code>claude mcp add pensiero -- node dist/cli.js mcp .</code></pre>
+    <p>For the desktop app's browser pane, a launch configuration starts the hub and opens the UI:</p>
+    <pre><code>{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "pensiero-profondo",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["dist/cli.js", "hub", "."],
+      "port": 4177
+    }
+  ]
+}</code></pre>
+  </section>
+
+  <section id="security">
+    <h2>Security model</h2>
+    <p>The board carries text from one session into another. That is the feature and the risk. Four things hold regardless of what an entry says: every delivery goes through one frame; every quoted line starts with <code>| </code>; entries are capped at 700 characters and deliveries at 12; and the hub never executes anything found on the board. The frame's wording is the fifth defence and the weakest, which is why it is listed last.</p>
+    <p>Every API call and every UI socket presents the token, loopback included: a web page open on the owner's machine is loopback too, and without the token it could sign on members or read transcripts. The page served on loopback carries the token, and another origin cannot read that page because the hub never sends CORS headers; a browser on another host adds <code>?token=</code> once. Worker sockets carry the token in their first message and are refused if they come from a browser. A worker may only speak for members on its own machine. There is no other authentication.</p>
+  </section>
+
+  <section id="status">
+    <h2>Status</h2>
+    <p>v0.1. Working: init, hub, local and remote workers, live transcripts, send, interrupt, model change, the board with frames and caps, the Attack ritual, budget cap. The Cartographer and the Boatswain exist as roles you sign on by hand; their rituals (blind re-derivation, arbitration) are not automated yet. Not yet in the UI: council and consent rituals, gates, a Captain adapter for non-Claude models, a permission approval flow for tool calls. Until that flow exists, a tool call that would ask for permission is allowed for roles under <code>acceptEdits</code> and denied for roles under <code>dontAsk</code>, so a role that must stay narrow lists its tools or uses <code>dontAsk</code>.</p>
+  </section>
+
+  <footer>
+    <p>Made by <a href="https://github.com/nerln">Eugenio Nerelli</a>. MIT licence.</p>
+    <p><a href="https://github.com/nerln/pensiero-profondo">github.com/nerln/pensiero-profondo</a></p>
+  </footer>
+</main>
+
+<script>
+(function () {
+  document.querySelectorAll("pre").forEach(function (pre) {
+    var btn = document.createElement("button");
+    btn.className = "copy-btn";
+    btn.type = "button";
+    btn.textContent = "Copy";
+    btn.addEventListener("click", function () {
+      var text = pre.querySelector("code").innerText;
+      navigator.clipboard.writeText(text).then(function () {
+        btn.textContent = "Copied";
+        setTimeout(function () { btn.textContent = "Copy"; }, 1500);
+      });
+    });
+    pre.appendChild(btn);
+  });
+})();
+</script>
